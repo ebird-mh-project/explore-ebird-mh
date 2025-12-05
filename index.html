@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Historical Data Summarized</title>
+<style>
+body{
+  text-align:center
+}
+</style>
+</head>
+<body>
+    <iframe id = "frameid" src='seasons/Monsoon 2022.html' style="position:fixed; top:0; left:0; bottom:0; right:0; width:100%; height:100%; border:none; margin:0; padding:0; overflow:hidden; z-index:-999;">Invalid Selection.</iframe>
+    
+    <select id="SeasonSelection",style="z-index:1">
+    <option value="Summer">Summer</option>
+    <option value="Monsoon">Monsoon</option>
+    <option value="Winter">Winter</option>
+    </select>
+
+    <select id="YearSelection",style="z-index:1">
+    <option value="2020">2020</option>
+    <option value="2021">2021</option>
+    <option value="2022">2022</option>
+    <option value="2023">2023</option>
+    <option value="2024">2024</option>
+    <option value="2025">2025</option>
+    </select>
+
+    <script>
+
+    // auto update function
+    function updateFrame() {
+        let season = document.getElementById("SeasonSelection").value;
+        let yr = document.getElementById("YearSelection").value;
+        document.getElementById("frameid").src = `seasons/${season} ${yr}.html`;
+        }
+
+    document.getElementById("SeasonSelection").addEventListener("change", updateFrame);
+    document.getElementById("YearSelection").addEventListener("change", updateFrame);
+    
+    </script>
+</body>
+</html>
