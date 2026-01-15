@@ -1,5 +1,5 @@
 # explore-ebird-mh
-A page displaying exploratory data from eBird for Maharashtra (Summer 2020 to Monsoon 2025). Prototype for a Species Distribution Modelling app. Will be periodically updated to add more informative details &amp; improve UI/UX. Folium/Leaflet &amp; JavaScript.
+A page displaying exploratory data from eBird for Maharashtra (Summer 2020 to Monsoon 2025). Prototype for a Species Distribution Modelling app. Will be periodically updated to add more informative details &amp; improve UI/UX. Folium/Leaflet &amp; JavaScript.  https://ebird-mh-project.github.io/explore-ebird-mh/
 
 # TO-DO LIST as of 2025/12/05
 * The HTML for the maps & the data for the geojson files <i>used</i> for the same were generated in Python, in a Jupyter notebook stored on my systems. Need to set up GitHub Actions to automate this process, updating the data each month by making an API call + automate the creation of the maps.
