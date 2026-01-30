@@ -1,6 +1,7 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+<meta charset="UTF-8">
 <title>Maharashtra: eBird Data (2020–2025)</title>
 
 <style>
@@ -9,6 +10,7 @@ html, body {
   padding: 0;
   height: 100%;
   font-family: Arial, sans-serif;
+  overflow: hidden;
 }
 
 /* ===== Top bar ===== */
@@ -30,36 +32,48 @@ html, body {
 #topbar button, #topbar select {
   padding: 5px 8px;
   font-size: 14px;
+  cursor: pointer;
 }
 
-/* ===== Views ===== */
+/* ===== Views (animated) ===== */
 .view {
-  position: absolute;
+  position: fixed;
   top: 50px;
   left: 0;
   right: 0;
   bottom: 0;
 
   opacity: 0;
-  transform: translateY(10px);
-  pointer-events: none;
+  visibility: hidden;
+  transform: translateY(12px);
 
-  transition: opacity 0.35s ease, transform 0.35s ease;
+  transition:
+    opacity 0.35s ease,
+    transform 0.35s ease,
+    visibility 0s linear 0.35s;
+
+  pointer-events: none;
 }
 
 .view.active {
   opacity: 1;
+  visibility: visible;
   transform: translateY(0);
+
+  transition:
+    opacity 0.35s ease,
+    transform 0.35s ease;
+
   pointer-events: auto;
 }
 
-/* ===== Map view layout ===== */
+/* ===== Map layout ===== */
 #mapContainer {
   position: absolute;
-  top: 50px;
+  top: 0;
   left: 0;
-  bottom: 0;
   right: 300px; /* space for summary panel */
+  bottom: 0;
 }
 
 #mapFrame {
@@ -77,6 +91,7 @@ html, body {
   bottom: 0;
   border-left: 1px solid #ccc;
   background: #f9f9f9;
+  transition: opacity 0.3s ease;
 }
 
 #summaryFrame {
@@ -85,10 +100,17 @@ html, body {
   border: none;
 }
 
+/* Hide summary when not in map view */
+#mapView:not(.active) #summaryPanel {
+  opacity: 0;
+  pointer-events: none;
+}
+
 /* ===== About view ===== */
 #aboutView {
-  padding: 70px 40px;
-  text-align: left;
+  padding: 40px;
+  background: #ffeaa7;
+  box-sizing: border-box;
 }
 </style>
 </head>
@@ -119,15 +141,11 @@ html, body {
 <!-- ===== MAP VIEW ===== -->
 <div id="mapView" class="view active">
   <div id="mapContainer">
-    <iframe id="mapFrame"
-      src="seasons/Monsoon 2022.html">
-    </iframe>
+    <iframe id="mapFrame" src="seasons/Monsoon 2022.html"></iframe>
   </div>
 
   <div id="summaryPanel">
-    <iframe id="summaryFrame"
-      src="season summary/Monsoon 2022.html">
-    </iframe>
+    <iframe id="summaryFrame" src="season summary/Monsoon 2022.html"></iframe>
   </div>
 </div>
 
@@ -139,8 +157,8 @@ html, body {
     Maharashtra from 2020–2025.
   </p>
   <p>
-    Data are summarized by season and year, with spatial distributions
-    rendered using interactive maps.
+    Interactive maps show spatial patterns, while the summary panel
+    provides season-wise insights.
   </p>
 </div>
 
@@ -157,20 +175,18 @@ function updateFrames() {
 }
 
 function showView(view) {
-  const mapView = document.getElementById("mapView");
-  const aboutView = document.getElementById("aboutView");
+  document.getElementById("mapView")
+    .classList.toggle("active", view === "map");
 
-  if (view === 'map') {
-    mapView.classList.add("active");
-    aboutView.classList.remove("active");
-  } else {
-    aboutView.classList.add("active");
-    mapView.classList.remove("active");
-  }
+  document.getElementById("aboutView")
+    .classList.toggle("active", view === "about");
 }
 
-document.getElementById("SeasonSelection").addEventListener("change", updateFrames);
-document.getElementById("YearSelection").addEventListener("change", updateFrames);
+document.getElementById("SeasonSelection")
+  .addEventListener("change", updateFrames);
+
+document.getElementById("YearSelection")
+  .addEventListener("change", updateFrames);
 </script>
 
 </body>
