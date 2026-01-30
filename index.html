@@ -1,44 +1,177 @@
 <!DOCTYPE html>
 <html>
 <head>
-<title>Maharashtra: eBird Data from 2020 to 2025</title>
+<title>Maharashtra: eBird Data (2020–2025)</title>
+
 <style>
-body{
-  text-align:center
+html, body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  font-family: Arial, sans-serif;
+}
+
+/* ===== Top bar ===== */
+#topbar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 50px;
+  background: #222;
+  color: white;
+  display: flex;
+  align-items: center;
+  padding: 0 10px;
+  z-index: 1000;
+  gap: 10px;
+}
+
+#topbar button, #topbar select {
+  padding: 5px 8px;
+  font-size: 14px;
+}
+
+/* ===== Views ===== */
+.view {
+  position: absolute;
+  top: 50px;
+  left: 0;
+  right: 0;
+  bottom: 0;
+
+  opacity: 0;
+  transform: translateY(10px);
+  pointer-events: none;
+
+  transition: opacity 0.35s ease, transform 0.35s ease;
+}
+
+.view.active {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+}
+
+/* ===== Map view layout ===== */
+#mapContainer {
+  position: absolute;
+  top: 50px;
+  left: 0;
+  bottom: 0;
+  right: 300px; /* space for summary panel */
+}
+
+#mapFrame {
+  width: 100%;
+  height: 100%;
+  border: none;
+}
+
+/* ===== Right summary panel ===== */
+#summaryPanel {
+  position: fixed;
+  top: 50px;
+  right: 0;
+  width: 300px;
+  bottom: 0;
+  border-left: 1px solid #ccc;
+  background: #f9f9f9;
+}
+
+#summaryFrame {
+  width: 100%;
+  height: 100%;
+  border: none;
+}
+
+/* ===== About view ===== */
+#aboutView {
+  padding: 70px 40px;
+  text-align: left;
 }
 </style>
 </head>
-<body>
-    <iframe id = "frameid" src='seasons/Monsoon 2022.html' style="position:fixed; top:0; left:0; bottom:0; right:0; width:100%; height:100%; border:none; margin:0; padding:0; overflow:hidden; z-index:-999;">Invalid Selection.</iframe>
-    
-    <select id="SeasonSelection",style="z-index:1">
-    <option value="Summer">Summer</option>
-    <option value="Monsoon">Monsoon</option>
-    <option value="Winter">Winter</option>
-    </select>
 
-    <select id="YearSelection",style="z-index:1">
+<body>
+
+<!-- ===== Top bar ===== -->
+<div id="topbar">
+  <button onclick="showView('map')">Map</button>
+  <button onclick="showView('about')">About</button>
+
+  <select id="SeasonSelection">
+    <option value="Summer">Summer</option>
+    <option value="Monsoon" selected>Monsoon</option>
+    <option value="Winter">Winter</option>
+  </select>
+
+  <select id="YearSelection">
     <option value="2020">2020</option>
     <option value="2021">2021</option>
-    <option value="2022">2022</option>
+    <option value="2022" selected>2022</option>
     <option value="2023">2023</option>
     <option value="2024">2024</option>
     <option value="2025">2025</option>
-    </select>
+  </select>
+</div>
 
-    <script>
+<!-- ===== MAP VIEW ===== -->
+<div id="mapView" class="view active">
+  <div id="mapContainer">
+    <iframe id="mapFrame"
+      src="seasons/Monsoon 2022.html">
+    </iframe>
+  </div>
 
-    // auto update function
-    function updateFrame() {
-        let season = document.getElementById("SeasonSelection").value;
-        let yr = document.getElementById("YearSelection").value;
-        document.getElementById("frameid").src = `seasons/${season} ${yr}.html`;
-        }
+  <div id="summaryPanel">
+    <iframe id="summaryFrame"
+      src="season summary/Monsoon 2022.html">
+    </iframe>
+  </div>
+</div>
 
-    document.getElementById("SeasonSelection").addEventListener("change", updateFrame);
-    document.getElementById("YearSelection").addEventListener("change", updateFrame);
-    
-    </script>
+<!-- ===== ABOUT VIEW ===== -->
+<div id="aboutView" class="view">
+  <h1>About this project</h1>
+  <p>
+    This application visualizes seasonal eBird observations across
+    Maharashtra from 2020–2025.
+  </p>
+  <p>
+    Data are summarized by season and year, with spatial distributions
+    rendered using interactive maps.
+  </p>
+</div>
+
+<script>
+function updateFrames() {
+  const season = document.getElementById("SeasonSelection").value;
+  const yr = document.getElementById("YearSelection").value;
+
+  document.getElementById("mapFrame").src =
+    `seasons/${season} ${yr}.html`;
+
+  document.getElementById("summaryFrame").src =
+    `season summary/${season} ${yr}.html`;
+}
+
+function showView(view) {
+  const mapView = document.getElementById("mapView");
+  const aboutView = document.getElementById("aboutView");
+
+  if (view === 'map') {
+    mapView.classList.add("active");
+    aboutView.classList.remove("active");
+  } else {
+    aboutView.classList.add("active");
+    mapView.classList.remove("active");
+  }
+}
+
+document.getElementById("SeasonSelection").addEventListener("change", updateFrames);
+document.getElementById("YearSelection").addEventListener("change", updateFrames);
+</script>
+
 </body>
-
 </html>
