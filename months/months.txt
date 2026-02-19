@@ -1,0 +1,5 @@
+This will have HTML pages for the monthly updates.
+
+The first version of the page only had seasonal updates for historical periods. 
+
+The monthly updates are automated through GitHub Actions.
