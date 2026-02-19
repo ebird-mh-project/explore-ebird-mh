@@ -35,6 +35,18 @@ html, body {
   cursor: pointer;
 }
 
+/* ===== Monthly toggle button ===== */
+#toggleModeBtn {
+  background: darkgreen;
+  color: white;
+  border: none;
+  border-radius: 4px;
+}
+
+#toggleModeBtn:hover {
+  opacity: 0.85;
+}
+
 /* ===== Views (animated) ===== */
 .view {
   position: fixed;
@@ -72,7 +84,7 @@ html, body {
   position: absolute;
   top: 0;
   left: 0;
-  right: 300px; /* space for summary panel */
+  right: 300px;
   bottom: 0;
 }
 
@@ -122,12 +134,35 @@ html, body {
   <button onclick="showView('map')">Map</button>
   <button onclick="showView('about')">About</button>
 
+  <!-- Toggle button -->
+  <button id="toggleModeBtn" onclick="toggleMode()">
+    See monthly
+  </button>
+
+  <!-- Seasonal dropdown -->
   <select id="SeasonSelection">
     <option value="Summer">Summer</option>
     <option value="Monsoon" selected>Monsoon</option>
     <option value="Winter">Winter</option>
   </select>
 
+  <!-- Monthly dropdown (hidden initially) -->
+  <select id="MonthSelection" style="display:none;">
+    <option value="January">January</option>
+    <option value="February">February</option>
+    <option value="March">March</option>
+    <option value="April">April</option>
+    <option value="May">May</option>
+    <option value="June">June</option>
+    <option value="July">July</option>
+    <option value="August">August</option>
+    <option value="September">September</option>
+    <option value="October">October</option>
+    <option value="November">November</option>
+    <option value="December">December</option>
+  </select>
+
+  <!-- Year dropdown -->
   <select id="YearSelection">
     <option value="2020">2020</option>
     <option value="2021">2021</option>
@@ -153,27 +188,63 @@ html, body {
 <div id="aboutView" class="view">
   <h1>About this project</h1>
   <p>
-    This application visualizes seasonal eBird observations across
+    This application visualizes seasonal and monthly eBird observations across
     Maharashtra from 2020–2025.
-  </p>
-  <p>
-    Interactive maps show spatial patterns, while the summary panel
-    provides season-wise insights.
   </p>
 </div>
 
 <script>
+let mode = "seasonal"; // seasonal OR monthly
+
 function updateFrames() {
-  const season = document.getElementById("SeasonSelection").value;
   const yr = document.getElementById("YearSelection").value;
 
-  document.getElementById("mapFrame").src =
-    `seasons/${season} ${yr}.html`;
+  if (mode === "seasonal") {
+    const season = document.getElementById("SeasonSelection").value;
 
-  document.getElementById("summaryFrame").src =
-    `season summary/${season} ${yr}.html`;
+    document.getElementById("mapFrame").src =
+      `seasons/${season} ${yr}.html`;
+
+    document.getElementById("summaryFrame").src =
+      `season summary/${season} ${yr}.html`;
+
+  } else {
+    const month = document.getElementById("MonthSelection").value;
+
+    document.getElementById("mapFrame").src =
+      `months/${month} ${yr}.html`;
+
+    document.getElementById("summaryFrame").src =
+      `month summary/${month} ${yr}.html`;
+  }
 }
 
+/* Toggle Seasonal ⇄ Monthly */
+function toggleMode() {
+  const seasonDropdown = document.getElementById("SeasonSelection");
+  const monthDropdown = document.getElementById("MonthSelection");
+  const toggleBtn = document.getElementById("toggleModeBtn");
+
+  if (mode === "seasonal") {
+    mode = "monthly";
+
+    seasonDropdown.style.display = "none";
+    monthDropdown.style.display = "inline";
+
+    toggleBtn.textContent = "See seasonal (2020–2025)";
+  } else {
+    mode = "seasonal";
+
+    seasonDropdown.style.display = "inline";
+    monthDropdown.style.display = "none";
+
+    toggleBtn.textContent = "See monthly";
+  }
+
+  updateFrames();
+}
+
+/* View switching */
 function showView(view) {
   document.getElementById("mapView")
     .classList.toggle("active", view === "map");
@@ -182,7 +253,11 @@ function showView(view) {
     .classList.toggle("active", view === "about");
 }
 
+/* Event listeners */
 document.getElementById("SeasonSelection")
+  .addEventListener("change", updateFrames);
+
+document.getElementById("MonthSelection")
   .addEventListener("change", updateFrames);
 
 document.getElementById("YearSelection")
