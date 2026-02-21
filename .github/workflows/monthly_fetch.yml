@@ -5,34 +5,37 @@ permissions:
 
 on:
   schedule:
-    - cron: "0 2 1 * *"
+    - cron: "0 2 1 * *"   # 02:00 UTC on the 1st
   workflow_dispatch:
 
 jobs:
-  run-fetch:
+  run-monthly:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v3
+      - name: Checkout repository
+        uses: actions/checkout@v3
 
-      - name: Setup Python
+      - name: Set up Python
         uses: actions/setup-python@v4
         with:
           python-version: '3.11'
 
       - name: Install dependencies
-        run: pip install pandas requests
+        run: pip install -r requirements.txt
 
-      - name: Run fetch
+      - name: Run monthly pipeline
         env:
           EBIRD_API_KEY: ${{ secrets.EBIRD_API_KEY }}
         run: |
           python fetch_data.py
-          python generate_map.py
-          python generate_summary.py
-          python seasons_automatic.py
+          
+          MONTH_YEAR=$(date +"%B_%Y")
+          
+          python -c "from generate_map import generate_map; generate_map('$MONTH_YEAR')"
+          python -c "from generate_summary import generate_summary; generate_summary('$MONTH_YEAR')"
 
-      - name: Commit changes
+      - name: Commit and push changes
         run: |
           git config --global user.name "github-actions"
           git config --global user.email "actions@github.com"
