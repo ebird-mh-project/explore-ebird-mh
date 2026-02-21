@@ -8,7 +8,7 @@ def generate_seasonal_summary(season_year):
     # =========================================
     # Load seasonal CSV
     # =========================================
-    csv_path = Path(f"seasons/{season_year}/{season_year}.csv")
+    csv_path = Path(f"new seasons/{season_year}/{season_year}.csv")
     df = pd.read_csv(csv_path)
 
     # Convert to GeoDataFrame
@@ -21,7 +21,7 @@ def generate_seasonal_summary(season_year):
     # =========================================
     # Load seasonal grid (smaller grid)
     # =========================================
-    grid = gpd.read_file("data/grid.geojson")
+    grid = gpd.read_file("grid.geojson")
     grid = grid.to_crs("EPSG:4326")
 
     # =========================================
@@ -146,7 +146,7 @@ body {{
 </html>
 """
 
-    output_path = Path(f"season summary/{season_year}.html")
+    output_path = Path(f"new season summary/{season_year}.html")
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
