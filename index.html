@@ -35,7 +35,7 @@ html, body {
   cursor: pointer;
 }
 
-/* ===== Monthly toggle button ===== */
+/* ===== Toggle button ===== */
 #toggleModeBtn {
   background: darkgreen;
   color: white;
@@ -47,39 +47,24 @@ html, body {
   opacity: 0.85;
 }
 
-/* ===== Views (animated) ===== */
+/* ===== Views ===== */
 .view {
   position: fixed;
   top: 50px;
   left: 0;
   right: 0;
   bottom: 0;
-
   opacity: 0;
   visibility: hidden;
-  transform: translateY(12px);
-
-  transition:
-    opacity 0.35s ease,
-    transform 0.35s ease,
-    visibility 0s linear 0.35s;
-
-  pointer-events: none;
+  transition: opacity 0.4s ease;
 }
 
 .view.active {
   opacity: 1;
   visibility: visible;
-  transform: translateY(0);
-
-  transition:
-    opacity 0.35s ease,
-    transform 0.35s ease;
-
-  pointer-events: auto;
 }
 
-/* ===== Map layout ===== */
+/* ===== Map Layout ===== */
 #mapContainer {
   position: absolute;
   top: 0;
@@ -92,9 +77,18 @@ html, body {
   width: 100%;
   height: 100%;
   border: none;
+  transition: opacity 0.3s ease;
 }
 
-/* ===== Right summary panel ===== */
+.fade-out {
+  opacity: 0;
+}
+
+.fade-in {
+  opacity: 1;
+}
+
+/* ===== Summary Panel ===== */
 #summaryPanel {
   position: fixed;
   top: 50px;
@@ -103,22 +97,16 @@ html, body {
   bottom: 0;
   border-left: 1px solid #ccc;
   background: #f9f9f9;
-  transition: opacity 0.3s ease;
 }
 
 #summaryFrame {
   width: 100%;
   height: 100%;
   border: none;
+  transition: opacity 0.3s ease;
 }
 
-/* Hide summary when not in map view */
-#mapView:not(.active) #summaryPanel {
-  opacity: 0;
-  pointer-events: none;
-}
-
-/* ===== About view ===== */
+/* ===== About ===== */
 #aboutView {
   padding: 40px;
   background: #ffeaa7;
@@ -129,123 +117,172 @@ html, body {
 
 <body>
 
-<!-- ===== Top bar ===== -->
 <div id="topbar">
   <button onclick="showView('map')">Map</button>
   <button onclick="showView('about')">About</button>
 
-  <!-- Toggle button -->
   <button id="toggleModeBtn" onclick="toggleMode()">
-    See monthly
+    See seasonal (2020–2025)
   </button>
 
-  <!-- Seasonal dropdown -->
   <select id="SeasonSelection">
     <option value="Summer">Summer</option>
-    <option value="Monsoon" selected>Monsoon</option>
+    <option value="Monsoon">Monsoon</option>
     <option value="Winter">Winter</option>
   </select>
 
-  <!-- Monthly dropdown (hidden initially) -->
-  <select id="MonthSelection" style="display:none;">
-    <option value="January">January</option>
-    <option value="February">February</option>
-    <option value="March">March</option>
-    <option value="April">April</option>
-    <option value="May">May</option>
-    <option value="June">June</option>
-    <option value="July">July</option>
-    <option value="August">August</option>
-    <option value="September">September</option>
-    <option value="October">October</option>
-    <option value="November">November</option>
-    <option value="December">December</option>
+  <select id="MonthSelection">
+    <option>January</option>
+    <option>February</option>
+    <option>March</option>
+    <option>April</option>
+    <option>May</option>
+    <option>June</option>
+    <option>July</option>
+    <option>August</option>
+    <option>September</option>
+    <option>October</option>
+    <option>November</option>
+    <option>December</option>
   </select>
 
-  <!-- Year dropdown -->
   <select id="YearSelection">
-    <option value="2020">2020</option>
-    <option value="2021">2021</option>
-    <option value="2022" selected>2022</option>
-    <option value="2023">2023</option>
-    <option value="2024">2024</option>
-    <option value="2025">2025</option>
-    <option value="2026">2026</option>
+    <option>2020</option>
+    <option>2021</option>
+    <option>2022</option>
+    <option>2023</option>
+    <option>2024</option>
+    <option>2025</option>
+    <option>2026</option>
   </select>
 </div>
 
-<!-- ===== MAP VIEW ===== -->
+<!-- MAP VIEW -->
 <div id="mapView" class="view active">
   <div id="mapContainer">
-    <iframe id="mapFrame" src="seasons/Monsoon 2022.html"></iframe>
+    <iframe id="mapFrame"></iframe>
   </div>
 
   <div id="summaryPanel">
-    <iframe id="summaryFrame" src="season summary/Monsoon 2022.html"></iframe>
+    <iframe id="summaryFrame"></iframe>
   </div>
 </div>
 
-<!-- ===== ABOUT VIEW ===== -->
+<!-- ABOUT VIEW -->
 <div id="aboutView" class="view">
   <h1>About this project</h1>
   <p>
-    This application visualizes seasonal and monthly eBird observations across
-    Maharashtra from 2020–2025.
+    This application visualizes seasonal and monthly eBird observations
+    across Maharashtra.
   </p>
 </div>
 
 <script>
-let mode = "seasonal"; // seasonal OR monthly
+let mode = "monthly";
 
-function updateFrames() {
-  const yr = document.getElementById("YearSelection").value;
+/* -------- Get latest available month -------- */
+function getLatestMonthYear() {
+  const now = new Date();
+  const monthNames = [
+    "January","February","March","April","May","June",
+    "July","August","September","October","November","December"
+  ];
+  return {
+    month: monthNames[now.getMonth()],
+    year: now.getFullYear()
+  };
+}
 
-  if (mode === "seasonal") {
-    const season = document.getElementById("SeasonSelection").value;
+/* -------- Disable future months -------- */
+function disableFutureMonths() {
+  const latest = getLatestMonthYear();
+  const monthDropdown = document.getElementById("MonthSelection");
+  const yearDropdown = document.getElementById("YearSelection");
 
-    document.getElementById("mapFrame").src =
-      `seasons/${season} ${yr}.html`;
+  const currentYear = latest.year;
+  const currentMonthIndex = new Date().getMonth();
 
-    document.getElementById("summaryFrame").src =
-      `season summary/${season} ${yr}.html`;
+  for (let y of yearDropdown.options) {
+    const yearValue = parseInt(y.value);
+    if (yearValue > currentYear) {
+      y.disabled = true;
+    }
+  }
 
-  } else {
-    const month = document.getElementById("MonthSelection").value;
-
-    document.getElementById("mapFrame").src =
-      `months/${month} ${yr}.html`;
-
-    document.getElementById("summaryFrame").src =
-      `month summary/${month} ${yr}.html`;
+  for (let i = 0; i < monthDropdown.options.length; i++) {
+    if (parseInt(yearDropdown.value) === currentYear && i > currentMonthIndex) {
+      monthDropdown.options[i].disabled = true;
+    } else {
+      monthDropdown.options[i].disabled = false;
+    }
   }
 }
 
-/* Toggle Seasonal ⇄ Monthly */
+/* -------- Fade transition helper -------- */
+function fadeFrames(callback) {
+  const mapFrame = document.getElementById("mapFrame");
+  const summaryFrame = document.getElementById("summaryFrame");
+
+  mapFrame.classList.add("fade-out");
+  summaryFrame.classList.add("fade-out");
+
+  setTimeout(() => {
+    callback();
+    mapFrame.classList.remove("fade-out");
+    summaryFrame.classList.remove("fade-out");
+  }, 250);
+}
+
+/* -------- Update Frames -------- */
+function updateFrames() {
+  fadeFrames(() => {
+
+    const yr = document.getElementById("YearSelection").value;
+
+    if (mode === "seasonal") {
+      const season = document.getElementById("SeasonSelection").value;
+
+      document.getElementById("mapFrame").src =
+        `seasons/${season} ${yr}.html`;
+
+      document.getElementById("summaryFrame").src =
+        `season summary/${season} ${yr}.html`;
+
+    } else {
+      const month = document.getElementById("MonthSelection").value;
+
+      document.getElementById("mapFrame").src =
+        `months/${month}_${yr}.html`;
+
+      document.getElementById("summaryFrame").src =
+        `month summary/${month}_${yr}.html`;
+    }
+
+  });
+}
+
+/* -------- Toggle Mode -------- */
 function toggleMode() {
+  const toggleBtn = document.getElementById("toggleModeBtn");
   const seasonDropdown = document.getElementById("SeasonSelection");
   const monthDropdown = document.getElementById("MonthSelection");
-  const toggleBtn = document.getElementById("toggleModeBtn");
 
-  if (mode === "seasonal") {
-    mode = "monthly";
-
-    seasonDropdown.style.display = "none";
-    monthDropdown.style.display = "inline";
-
-    toggleBtn.textContent = "See seasonal (2020–2025)";
-  } else {
+  if (mode === "monthly") {
     mode = "seasonal";
-
     seasonDropdown.style.display = "inline";
     monthDropdown.style.display = "none";
-
     toggleBtn.textContent = "See monthly";
+  } else {
+    mode = "monthly";
+    seasonDropdown.style.display = "none";
+    monthDropdown.style.display = "inline";
+    toggleBtn.textContent = "See seasonal (2020–2025)";
   }
 
   updateFrames();
 }
 
-/* View switching */
+/* -------- View Switching -------- */
 function showView(view) {
   document.getElementById("mapView")
     .classList.toggle("active", view === "map");
@@ -254,17 +291,34 @@ function showView(view) {
     .classList.toggle("active", view === "about");
 }
 
-/* Event listeners */
-document.getElementById("SeasonSelection")
-  .addEventListener("change", updateFrames);
-
+/* -------- Event Listeners -------- */
 document.getElementById("MonthSelection")
   .addEventListener("change", updateFrames);
 
-document.getElementById("YearSelection")
+document.getElementById("SeasonSelection")
   .addEventListener("change", updateFrames);
+
+document.getElementById("YearSelection")
+  .addEventListener("change", () => {
+    disableFutureMonths();
+    updateFrames();
+  });
+
+/* -------- Initialize -------- */
+window.onload = function() {
+
+  const latest = getLatestMonthYear();
+
+  document.getElementById("SeasonSelection").style.display = "none";
+  document.getElementById("MonthSelection").style.display = "inline";
+
+  document.getElementById("MonthSelection").value = latest.month;
+  document.getElementById("YearSelection").value = latest.year;
+
+  disableFutureMonths();
+  updateFrames();
+};
 </script>
 
 </body>
 </html>
-
