@@ -20,8 +20,7 @@ def generate_map(month_year):
             "properties": {
                 "commonName": row["commonName"],
                 "scientificName": row["scientificName"],
-                "observationCount": row.get("observationCount", "X"),
-                "iucn_status": row.get("iucn_status", "NE")
+                "observationCount": row.get("observationCount", "X")
             }
         }
 
@@ -43,7 +42,6 @@ def generate_map(month_year):
 
 <link rel="stylesheet"
  href="https://unpkg.com/leaflet/dist/leaflet.css"/>
-
 <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
 
 <style>
@@ -73,17 +71,7 @@ html, body {{
 
 <div id="filterPanel">
   <input type="text" id="speciesSearch"
-         placeholder="Search species"/><br><br>
-
-  <select id="iucnFilter">
-    <option value="all">All IUCN</option>
-    <option value="LC">LC</option>
-    <option value="NT">NT</option>
-    <option value="VU">VU</option>
-    <option value="EN">EN</option>
-    <option value="CR">CR</option>
-    <option value="NE">NE</option>
-  </select>
+         placeholder="Search species"/>
 </div>
 
 <div id="map"></div>
@@ -116,7 +104,6 @@ geojsonData.features.forEach(function(feature) {{
     marker.bindPopup(
         "<b>" + props.commonName + "</b><br>" +
         props.scientificName + "<br>" +
-        "IUCN: " + props.iucn_status + "<br>" +
         "Count: " + (props.observationCount || "X")
     );
 
@@ -124,32 +111,21 @@ geojsonData.features.forEach(function(feature) {{
     allMarkers.push(marker);
 }});
 
-function applyFilters() {{
+function applyFilter() {{
 
     var searchText = document
         .getElementById("speciesSearch")
         .value.toLowerCase();
-
-    var iucnValue = document
-        .getElementById("iucnFilter")
-        .value;
 
     allMarkers.forEach(function(marker) {{
 
         var species =
             marker.featureData.commonName.toLowerCase();
 
-        var iucn =
-            marker.featureData.iucn_status;
-
-        var matchSpecies =
+        var match =
             species.includes(searchText);
 
-        var matchIUCN =
-            (iucnValue === "all" ||
-             iucn === iucnValue);
-
-        if (matchSpecies && matchIUCN) {{
+        if (match) {{
             marker.addTo(map);
         }} else {{
             map.removeLayer(marker);
@@ -158,10 +134,7 @@ function applyFilters() {{
 }}
 
 document.getElementById("speciesSearch")
-    .addEventListener("input", applyFilters);
-
-document.getElementById("iucnFilter")
-    .addEventListener("change", applyFilters);
+    .addEventListener("input", applyFilter);
 
 </script>
 </body>
@@ -169,6 +142,7 @@ document.getElementById("iucnFilter")
 """
 
     output_path = Path(f"months/{month_year}.html")
+
     with open(output_path, "w", encoding="utf-8") as f:
         f.write(html_content)
 
