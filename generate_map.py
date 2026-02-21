@@ -17,9 +17,9 @@ def generate_map(time_period, mode="monthly"):
 
     # Choose grid file
     if mode == "monthly":
-        grid = gpd.read_file("data/grid_big.geojson")
+        grid = gpd.read_file("grid_big.geojson")
     else:
-        grid = gpd.read_file("data/grid.geojson")
+        grid = gpd.read_file("grid.geojson")
 
     grid = grid.to_crs("EPSG:4326")
 
