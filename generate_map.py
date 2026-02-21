@@ -21,7 +21,7 @@ def generate_map(month_year):
     )
     
     # Load grid
-    grid = gpd.read_file("data/grid.geojson")
+    grid = gpd.read_file("grid.geojson")
     
     # Force both to same CRS explicitly
     grid = grid.to_crs(epsg=4326)
