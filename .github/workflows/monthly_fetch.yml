@@ -35,6 +35,10 @@ jobs:
           python -c "from generate_map import generate_map; generate_map('$MONTH_YEAR')"
           python -c "from generate_summary import generate_summary; generate_summary('$MONTH_YEAR')"
 
+      - name: Generate new seasonal outputs
+        run: |
+          python generate_summary_seasonal.py
+      
       - name: Commit and push changes
         run: |
           git config --global user.name "github-actions"
