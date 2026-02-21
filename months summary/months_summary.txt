@@ -1,1 +1,0 @@
-The months summary folder serves the same purpose as the season summary folder, but for live updated monthly view
