@@ -12,17 +12,20 @@ def generate_map(month_year):
     df = pd.read_csv(csv_path)
 
     # Convert to GeoDataFrame
+    
+    # Convert points to GeoDataFrame
     gdf_points = gpd.GeoDataFrame(
         df,
         geometry=gpd.points_from_xy(df.longitude, df.latitude),
         crs="EPSG:4326"
     )
-
-    # =============================
-    # Load grid GeoJSON
-    # =============================
-    grid = gpd.read_file("grid.geojson")
-    grid = grid.to_crs("EPSG:4326")
+    
+    # Load grid
+    grid = gpd.read_file("data/grid.geojson")
+    
+    # Force both to same CRS explicitly
+    grid = grid.to_crs(epsg=4326)
+    gdf_points = gdf_points.to_crs(epsg=4326)
 
     # =============================
     # Spatial join
