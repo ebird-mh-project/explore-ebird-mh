@@ -3,33 +3,27 @@ import geopandas as gpd
 import json
 from pathlib import Path
 
-def generate_map(month_year):
+def generate_map(time_period, mode="monthly"):
 
-    # =============================
-    # Load bird CSV
-    # =============================
-    csv_path = Path(f"months/{month_year}/{month_year}.csv")
+    csv_path = Path(f"{mode}s/{time_period}/{time_period}.csv")
     df = pd.read_csv(csv_path)
 
     # Convert to GeoDataFrame
-    
-    # Convert points to GeoDataFrame
     gdf_points = gpd.GeoDataFrame(
         df,
         geometry=gpd.points_from_xy(df.longitude, df.latitude),
         crs="EPSG:4326"
     )
-    
-    # Load grid
-    grid = gpd.read_file("grid.geojson")
-    
-    # Force both to same CRS explicitly
-    grid = grid.to_crs(epsg=4326)
-    gdf_points = gdf_points.to_crs(epsg=4326)
 
-    # =============================
+    # Choose grid file
+    if mode == "monthly":
+        grid = gpd.read_file("data/grid_big.geojson")
+    else:
+        grid = gpd.read_file("data/grid.geojson")
+
+    grid = grid.to_crs("EPSG:4326")
+
     # Spatial join
-    # =============================
     joined = gpd.sjoin(
         gdf_points,
         grid,
@@ -37,88 +31,64 @@ def generate_map(month_year):
         predicate="within"
     )
 
-    # =============================
-    # Aggregate per grid
-    # =============================
-    summary = []
+    summaries = []
 
     for grid_id, group in joined.groupby("grid_id"):
 
         total_obs = len(group)
 
-        top_species = (
-            group["commonName"]
-            .value_counts()
-            .head(5)
-        )
+        top_species = group["commonName"].value_counts().head(5)
 
-        top_species_list = top_species.index.tolist()
-        top_species_counts = top_species.values.tolist()
+        habitat = group["habitatSpecialization"].value_counts().head(5)
+        migratory = group["migratoryPattern"].value_counts().head(5)
 
-        popup_data = {
-            "Month": month_year,
-            "Grid ID": int(grid_id),
-            "Observations": int(total_obs),
-            "Top 5 species": top_species_list,
-            "Counts of top 5 species": top_species_counts
-        }
+        summaries.append({
+            "grid_id": grid_id,
+            "observations": int(total_obs),
+            "top_species": top_species.index.tolist(),
+            "top_counts": top_species.values.tolist(),
+            "habitat": habitat.index.tolist(),
+            "migratory": migratory.index.tolist()
+        })
 
-        summary.append((grid_id, popup_data))
+    summary_df = pd.DataFrame(summaries)
 
-    # Merge summary back to grid
-    popup_dict = dict(summary)
+    grid = grid.merge(summary_df, on="grid_id", how="left")
+    grid["observations"] = grid["observations"].fillna(0)
 
-    grid["popup_data"] = grid["grid_id"].map(popup_dict)
+    geojson_grid = grid.to_json()
+    geojson_points = gdf_points.to_json()
 
-    grid = grid[grid["popup_data"].notnull()]
-
-    # =============================
-    # Convert to GeoJSON
-    # =============================
-    geojson_str = grid.to_json()
-
-    # =============================
-    # Generate HTML
-    # =============================
-    html_content = f"""
+    html = f"""
 <!DOCTYPE html>
 <html>
 <head>
 <meta charset="utf-8"/>
-<title>{month_year}</title>
+<title>{time_period}</title>
 
 <link rel="stylesheet"
  href="https://unpkg.com/leaflet/dist/leaflet.css"/>
 <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
 
 <style>
-html, body {{
-    margin:0;
-    height:100%;
-}}
-
-#map {{
-    height:100%;
-}}
-
-#filterPanel {{
-    position:absolute;
-    top:10px;
-    left:10px;
-    background:white;
-    padding:10px;
-    border-radius:8px;
-    z-index:1000;
-    box-shadow:0 0 10px rgba(0,0,0,0.2);
+html, body {{ margin:0; height:100%; }}
+#map {{ height:100%; }}
+#controls {{
+  position:absolute;
+  top:10px;
+  left:10px;
+  background:white;
+  padding:10px;
+  border-radius:8px;
+  z-index:1000;
 }}
 </style>
 </head>
-
 <body>
 
-<div id="filterPanel">
-  <input type="text" id="speciesSearch"
-         placeholder="Filter grids by species"/>
+<div id="controls">
+<button onclick="showGrid()">Grid View</button>
+<button onclick="showPoints()">Point View</button>
 </div>
 
 <div id="map"></div>
@@ -132,77 +102,77 @@ L.tileLayer(
   {{ attribution: '© OpenStreetMap contributors' }}
 ).addTo(map);
 
-var geojsonData = {geojson_str};
+var gridData = {geojson_grid};
+var pointData = {geojson_points};
+
+function getColor(d) {{
+  return d > 500 ? '#800026' :
+         d > 200 ? '#BD0026' :
+         d > 100 ? '#E31A1C' :
+         d > 50  ? '#FC4E2A' :
+         d > 20  ? '#FD8D3C' :
+         d > 0   ? '#FEB24C' :
+                   '#FFFFFF';
+}}
 
 function style(feature) {{
-    return {{
-        color: "#444",
-        weight: 1,
-        fillOpacity: 0
-    }};
+  return {{
+    fillColor: getColor(feature.properties.observations),
+    weight: 1,
+    color: '#555',
+    fillOpacity: 0.6
+  }};
 }}
 
-function onEachFeature(feature, layer) {{
+function onEachGrid(feature, layer) {{
 
-    var props = feature.properties.popup_data;
+  var p = feature.properties;
 
-    if (!props) return;
+  var content =
+    "<b>{time_period}</b><br>" +
+    "Grid ID: " + p.grid_id + "<br>" +
+    "Observations: " + p.observations + "<br><br>" +
+    "<b>Top 5 species</b><br>" +
+    (p.top_species || []).join("<br>") + "<br><br>" +
+    "<b>Habitat specializations</b><br>" +
+    (p.habitat || []).join(", ") + "<br><br>" +
+    "<b>Migratory patterns</b><br>" +
+    (p.migratory || []).join(", ");
 
-    var content =
-        "<b>" + props["Month"] + "</b><br>" +
-        "Grid ID: " + props["Grid ID"] + "<br>" +
-        "Observations: " + props["Observations"] + "<br><br>" +
-        "<b>Top 5 Species</b><br>" +
-        props["Top 5 species"].join("<br>") + "<br><br>" +
-        "<b>Counts</b><br>" +
-        props["Counts of top 5 species"].join(", ");
-
-    layer.bindPopup(content);
-
-    layer.featureData = props;
+  layer.bindPopup(content);
 }}
 
-var gridLayer = L.geoJSON(geojsonData, {{
-    style: style,
-    onEachFeature: onEachFeature
-}}).addTo(map);
+var gridLayer = L.geoJSON(gridData, {{
+  style: style,
+  onEachFeature: onEachGrid
+}});
 
-function applyFilter() {{
+var pointLayer = L.geoJSON(pointData, {{
+  pointToLayer: function(feature, latlng) {{
+    return L.circleMarker(latlng, {{radius:4}});
+  }}
+}});
 
-    var searchText =
-        document.getElementById("speciesSearch")
-        .value.toLowerCase();
+gridLayer.addTo(map);
 
-    gridLayer.eachLayer(function(layer) {{
-
-        var props = layer.featureData;
-
-        if (!props) return;
-
-        var speciesList =
-            props["Top 5 species"]
-            .join(" ")
-            .toLowerCase();
-
-        if (speciesList.includes(searchText)) {{
-            layer.setStyle({{ color:"#444", weight:1 }});
-        }} else {{
-            layer.setStyle({{ color:"#ccc", weight:1 }});
-        }}
-    }});
+function showGrid() {{
+  map.removeLayer(pointLayer);
+  gridLayer.addTo(map);
 }}
 
-document.getElementById("speciesSearch")
-    .addEventListener("input", applyFilter);
+function showPoints() {{
+  map.removeLayer(gridLayer);
+  pointLayer.addTo(map);
+}}
 
 </script>
 </body>
 </html>
 """
 
-    output_path = Path(f"months/{month_year}.html")
+    output_path = Path(f"{mode}s/{time_period}.html")
 
     with open(output_path, "w", encoding="utf-8") as f:
-        f.write(html_content)
+        f.write(html)
 
-    print(f"Grid map generated: {month_year}")
+    print(f"{mode.capitalize()} map generated: {time_period}")
