@@ -1,36 +1,46 @@
 import requests
-from datetime import datetime, timedelta
+from datetime import datetime
 import pandas as pd
+import os
+from pathlib import Path
 
-
-API_KEY = "${{ secrets.EBIRD_API_KEY }}"   
-REGION_CODE = "IN-MH"    
-BACK_DAYS = 30        
+API_KEY = os.getenv("EBIRD_API_KEY")
+REGION_CODE = "IN-MH"
+BACK_DAYS = 30
 BASE_URL = "https://api.ebird.org/v2/data/obs"
 
+today = datetime.today()
+month_year = today.strftime("%B_%Y")
 
 url = f"{BASE_URL}/{REGION_CODE}/recent"
-params = {
-    "back": BACK_DAYS, 
-}
-headers = {
-    "X-eBirdApiToken": API_KEY
-}
-
+params = {"back": BACK_DAYS}
+headers = {"X-eBirdApiToken": API_KEY}
 
 response = requests.get(url, headers=headers, params=params)
 
-if response.status_code == 200:
-    data = response.json()
-    #print(f"Total records fetched: {len(data)}\n")
-    
-    # Print a few examples
-    #for i, obs in enumerate(data[:10]):
-        #print(f"{i+1}. Species: {obs.get('comName')} | Date: {obs.get('obsDt')}")
-    else:
-        print("Error:", response.status_code, response.text)
+if response.status_code != 200:
+    raise Exception(response.text)
 
-month_year = today.strftime("%B_%Y")
-data = pd.DataFrame(data)
-df.to_csv(f"months/{month_year}", index=False)
-data.to_csv(f"months/{month_year}/{month_year}.csv")
+data = response.json()
+df = pd.DataFrame(data)
+
+df = df.rename(columns={
+    "comName": "commonName",
+    "sciName": "scientificName",
+    "obsDt": "observationDate",
+    "howMany": "observationCount",
+    "lat": "latitude",
+    "lng": "longitude"
+})
+
+# Merge IUCN
+iucn_df = pd.read_csv("iucn_lookup.csv")
+df = df.merge(iucn_df, on="scientificName", how="left")
+df["iucn_status"] = df["iucn_status"].fillna("NE")
+
+output_folder = Path(f"months/{month_year}")
+output_folder.mkdir(parents=True, exist_ok=True)
+
+df.to_csv(output_folder / f"{month_year}.csv", index=False)
+
+print(f"Saved {month_year}")
