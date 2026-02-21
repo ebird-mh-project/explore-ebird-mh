@@ -33,11 +33,6 @@ df = df.rename(columns={
     "lng": "longitude"
 })
 
-# Merge IUCN
-iucn_df = pd.read_csv("iucn_lookup.csv")
-df = df.merge(iucn_df, on="scientificName", how="left")
-df["iucn_status"] = df["iucn_status"].fillna("NE")
-
 output_folder = Path(f"months/{month_year}")
 output_folder.mkdir(parents=True, exist_ok=True)
 
