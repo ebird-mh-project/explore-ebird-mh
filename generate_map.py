@@ -1,38 +1,82 @@
 import pandas as pd
+import geopandas as gpd
 import json
 from pathlib import Path
 
 def generate_map(month_year):
 
+    # =============================
+    # Load bird CSV
+    # =============================
     csv_path = Path(f"months/{month_year}/{month_year}.csv")
     df = pd.read_csv(csv_path)
 
-    features = []
+    # Convert to GeoDataFrame
+    gdf_points = gpd.GeoDataFrame(
+        df,
+        geometry=gpd.points_from_xy(df.longitude, df.latitude),
+        crs="EPSG:4326"
+    )
 
-    for _, row in df.iterrows():
+    # =============================
+    # Load grid GeoJSON
+    # =============================
+    grid = gpd.read_file("grid.geojson")
+    grid = grid.to_crs("EPSG:4326")
 
-        feature = {
-            "type": "Feature",
-            "geometry": {
-                "type": "Point",
-                "coordinates": [row["longitude"], row["latitude"]]
-            },
-            "properties": {
-                "commonName": row["commonName"],
-                "scientificName": row["scientificName"],
-                "observationCount": row.get("observationCount", "X")
-            }
+    # =============================
+    # Spatial join
+    # =============================
+    joined = gpd.sjoin(
+        gdf_points,
+        grid,
+        how="inner",
+        predicate="within"
+    )
+
+    # =============================
+    # Aggregate per grid
+    # =============================
+    summary = []
+
+    for grid_id, group in joined.groupby("grid_id"):
+
+        total_obs = len(group)
+
+        top_species = (
+            group["commonName"]
+            .value_counts()
+            .head(5)
+        )
+
+        top_species_list = top_species.index.tolist()
+        top_species_counts = top_species.values.tolist()
+
+        popup_data = {
+            "Month": month_year,
+            "Grid ID": int(grid_id),
+            "Observations": int(total_obs),
+            "Top 5 species": top_species_list,
+            "Counts of top 5 species": top_species_counts
         }
 
-        features.append(feature)
+        summary.append((grid_id, popup_data))
 
-    geojson = {
-        "type": "FeatureCollection",
-        "features": features
-    }
+    # Merge summary back to grid
+    popup_dict = dict(summary)
 
-    geojson_str = json.dumps(geojson)
+    grid["popup_data"] = grid["grid_id"].map(popup_dict)
 
+    grid = grid[grid["popup_data"].notnull()]
+
+    # =============================
+    # Convert to GeoJSON
+    # =============================
+    geojson_str = grid.to_json()
+
+    # =============================
+    # Generate HTML
+    # =============================
     html_content = f"""
 <!DOCTYPE html>
 <html>
@@ -71,7 +115,7 @@ html, body {{
 
 <div id="filterPanel">
   <input type="text" id="speciesSearch"
-         placeholder="Search species"/>
+         placeholder="Filter grids by species"/>
 </div>
 
 <div id="map"></div>
@@ -87,48 +131,60 @@ L.tileLayer(
 
 var geojsonData = {geojson_str};
 
-var allMarkers = [];
+function style(feature) {{
+    return {{
+        color: "#444",
+        weight: 1,
+        fillOpacity: 0
+    }};
+}}
 
-geojsonData.features.forEach(function(feature) {{
+function onEachFeature(feature, layer) {{
 
-    var coords = feature.geometry.coordinates;
-    var props = feature.properties;
+    var props = feature.properties.popup_data;
 
-    var marker = L.circleMarker(
-        [coords[1], coords[0]],
-        {{ radius:5 }}
-    );
+    if (!props) return;
 
-    marker.featureData = props;
+    var content =
+        "<b>" + props["Month"] + "</b><br>" +
+        "Grid ID: " + props["Grid ID"] + "<br>" +
+        "Observations: " + props["Observations"] + "<br><br>" +
+        "<b>Top 5 Species</b><br>" +
+        props["Top 5 species"].join("<br>") + "<br><br>" +
+        "<b>Counts</b><br>" +
+        props["Counts of top 5 species"].join(", ");
 
-    marker.bindPopup(
-        "<b>" + props.commonName + "</b><br>" +
-        props.scientificName + "<br>" +
-        "Count: " + (props.observationCount || "X")
-    );
+    layer.bindPopup(content);
 
-    marker.addTo(map);
-    allMarkers.push(marker);
-}});
+    layer.featureData = props;
+}}
+
+var gridLayer = L.geoJSON(geojsonData, {{
+    style: style,
+    onEachFeature: onEachFeature
+}}).addTo(map);
 
 function applyFilter() {{
 
-    var searchText = document
-        .getElementById("speciesSearch")
+    var searchText =
+        document.getElementById("speciesSearch")
         .value.toLowerCase();
 
-    allMarkers.forEach(function(marker) {{
+    gridLayer.eachLayer(function(layer) {{
 
-        var species =
-            marker.featureData.commonName.toLowerCase();
+        var props = layer.featureData;
 
-        var match =
-            species.includes(searchText);
+        if (!props) return;
 
-        if (match) {{
-            marker.addTo(map);
+        var speciesList =
+            props["Top 5 species"]
+            .join(" ")
+            .toLowerCase();
+
+        if (speciesList.includes(searchText)) {{
+            layer.setStyle({{ color:"#444", weight:1 }});
         }} else {{
-            map.removeLayer(marker);
+            layer.setStyle({{ color:"#ccc", weight:1 }});
         }}
     }});
 }}
@@ -146,4 +202,4 @@ document.getElementById("speciesSearch")
     with open(output_path, "w", encoding="utf-8") as f:
         f.write(html_content)
 
-    print(f"Map generated: {month_year}")
+    print(f"Grid map generated: {month_year}")
