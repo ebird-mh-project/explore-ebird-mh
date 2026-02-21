@@ -168,7 +168,46 @@ async function fileExists(url) {
   }
 }
 
-/* ---------- Disable unavailable options ---------- */
+/* ---------- Disable unavailable years ---------- */
+async function disableUnavailableYears() {
+
+  const yearDropdown = document.getElementById("YearSelection");
+
+  for (let option of yearDropdown.options) {
+
+    const year = option.value;
+    let yearHasData = false;
+
+    if (mode === "monthly") {
+
+      const months = document.getElementById("MonthSelection").options;
+
+      for (let m of months) {
+        const path = `months/${m.value}_${year}.html`;
+        if (await fileExists(path)) {
+          yearHasData = true;
+          break;
+        }
+      }
+
+    } else {
+
+      const seasons = document.getElementById("SeasonSelection").options;
+
+      for (let s of seasons) {
+        const path = `seasons/${s.value} ${year}.html`;
+        if (await fileExists(path)) {
+          yearHasData = true;
+          break;
+        }
+      }
+    }
+
+    option.disabled = !yearHasData;
+  }
+}
+
+/* ---------- Disable unavailable months/seasons ---------- */
 async function disableUnavailableOptions() {
 
   const year = document.getElementById("YearSelection").value;
@@ -180,9 +219,9 @@ async function disableUnavailableOptions() {
     for (let option of monthDropdown.options) {
 
       const month = option.value;
-      const filePath = `months/${month}_${year}.html`;
+      const path = `months/${month}_${year}.html`;
 
-      const exists = await fileExists(filePath);
+      const exists = await fileExists(path);
       option.disabled = !exists;
     }
 
@@ -193,9 +232,9 @@ async function disableUnavailableOptions() {
     for (let option of seasonDropdown.options) {
 
       const season = option.value;
-      const filePath = `seasons/${season} ${year}.html`;
+      const path = `seasons/${season} ${year}.html`;
 
-      const exists = await fileExists(filePath);
+      const exists = await fileExists(path);
       option.disabled = !exists;
     }
   }
@@ -217,7 +256,10 @@ function fadeFrames(callback) {
 }
 
 /* ---------- Update frames ---------- */
-function updateFrames() {
+async function updateFrames() {
+
+  await disableUnavailableYears();
+  await disableUnavailableOptions();
 
   const yr = document.getElementById("YearSelection").value;
 
@@ -245,12 +287,10 @@ function updateFrames() {
     }
 
   });
-
-  disableUnavailableOptions();
 }
 
 /* ---------- Toggle mode ---------- */
-function toggleMode() {
+async function toggleMode() {
 
   const toggleBtn = document.getElementById("toggleModeBtn");
   const seasonDropdown = document.getElementById("SeasonSelection");
@@ -268,7 +308,8 @@ function toggleMode() {
     toggleBtn.textContent = "See seasonal (2020–2025)";
   }
 
-  disableUnavailableOptions();
+  await disableUnavailableYears();
+  await disableUnavailableOptions();
   updateFrames();
 }
 
@@ -291,7 +332,7 @@ document.getElementById("YearSelection")
   .addEventListener("change", updateFrames);
 
 /* ---------- Initialize ---------- */
-window.onload = function() {
+window.onload = async function() {
 
   const now = new Date();
   const monthNames = [
@@ -308,10 +349,13 @@ window.onload = function() {
   document.getElementById("SeasonSelection")
     .style.display = "none";
 
-  disableUnavailableOptions();
+  await disableUnavailableYears();
+  await disableUnavailableOptions();
   updateFrames();
 };
 
 </script>
+ 
 </body>
 </html>
+
