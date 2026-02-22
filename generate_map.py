@@ -10,7 +10,7 @@ def generate_map(time_period, mode="monthly"):
     if mode == "monthly":
         csv_path = Path(f"months/{time_period}.csv")
         output_path = Path(f"months/{time_period}.html")
-        grid_file = "grid_big.geojson"
+        grid_file = "grid.geojson"
 
     elif mode == "seasonal":
         csv_path = Path(f"new seasons/{time_period}.csv")
