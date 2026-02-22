@@ -95,7 +95,9 @@ def build_seasonal():
                 continue
 
             df = pd.read_csv(csv_path)
-
+            df = df.rename(columns={ "comName": "commonName",
+                                    "sciName": "scientificName", "obsDt": "observationDate",
+                                    "howMany": "observationCount","lat": "latitude","lng": "longitude"})
             if key not in seasonal_data:
                 seasonal_data[key] = []
 
