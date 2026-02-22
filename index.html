@@ -28,6 +28,7 @@ html, body {
   z-index: 1000;
 }
 
+/* Buttons */
 #topbar button, #topbar select {
   padding: 6px 8px;
   font-size: 14px;
@@ -52,14 +53,18 @@ html, body {
   display: none;
 }
 
-#globalSearch {
+/* Active Mode Indicator */
+#modeIndicator {
   margin-left: auto;
-  padding: 8px 10px;
-  width: 240px;
-  border-radius: 6px;
-  border: none;
+  padding: 6px 20px;
+  font-weight: bold;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  background: linear-gradient(to left, #1e7d1e 60%, #555 100%);
+  border-radius: 20px 0 0 20px;
 }
 
+/* Layout */
 .view {
   position: fixed;
   top: 55px;
@@ -109,17 +114,9 @@ html, body {
   <button onclick="showView('map')">Map</button>
   <button onclick="showView('about')">About</button>
 
-  <button id="monthlyBtn" onclick="setMode('monthly')">
-    Monthly
-  </button>
-
-  <button id="seasonalBtn" onclick="setMode('newseason')">
-    Seasonal
-  </button>
-
-  <button id="oldVersionBtn" onclick="setMode('old')">
-    Old (Season)
-  </button>
+  <button id="monthlyBtn" onclick="setMode('monthly')">Monthly</button>
+  <button id="seasonalBtn" onclick="setMode('newseason')">Seasonal</button>
+  <button id="oldVersionBtn" onclick="setMode('old')">Old (Season)</button>
 
   <!-- Monthly Controls -->
   <select id="MonthSelection">
@@ -136,7 +133,7 @@ html, body {
     <option>2026</option>
   </select>
 
-  <!-- Seasonal Controls (used for BOTH new + old) -->
+  <!-- Seasonal Controls -->
   <select id="SeasonSelection" class="hidden">
     <option>Summer</option>
     <option>Monsoon</option>
@@ -148,8 +145,8 @@ html, body {
     <option>2026</option>
   </select>
 
-  <input type="text" id="globalSearch"
-         placeholder="Search species...">
+  <div id="modeIndicator">MONTHLY</div>
+
 </div>
 
 <div id="mapView" class="view active">
@@ -173,26 +170,22 @@ let mode = "monthly";
 function updateFrames() {
 
   if (mode === "monthly") {
-
     const month = MonthSelection.value;
     const year = MonthlyYearSelection.value;
-
     mapFrame.src = `months/${month}_${year}.html`;
     summaryFrame.src = `month summary/${month}_${year}.html`;
+  }
 
-  } else if (mode === "newseason") {
-
+  else if (mode === "newseason") {
     const season = SeasonSelection.value;
     const year = SeasonYearSelection.value;
-
     mapFrame.src = `new seasons/${season} ${year}.html`;
     summaryFrame.src = `new season summary/${season} ${year}.html`;
+  }
 
-  } else if (mode === "old") {
-
+  else if (mode === "old") {
     const season = SeasonSelection.value;
     const year = SeasonYearSelection.value;
-
     mapFrame.src = `seasons/${season} ${year}.html`;
     summaryFrame.src = `season summary/${season} ${year}.html`;
   }
@@ -204,23 +197,52 @@ function setMode(newMode) {
   mode = newMode;
 
   if (mode === "monthly") {
-
     MonthSelection.classList.remove("hidden");
     MonthlyYearSelection.classList.remove("hidden");
-
     SeasonSelection.classList.add("hidden");
     SeasonYearSelection.classList.add("hidden");
+    modeIndicator.textContent = "MONTHLY";
+  }
 
-  } else {
-
+  else {
     MonthSelection.classList.add("hidden");
     MonthlyYearSelection.classList.add("hidden");
-
     SeasonSelection.classList.remove("hidden");
     SeasonYearSelection.classList.remove("hidden");
+
+    modeIndicator.textContent =
+      (mode === "newseason") ? "SEASONAL" : "OLD (SEASON)";
   }
 
   updateFrames();
+}
+
+/* ---------- Disable Unavailable Files ---------- */
+function disableInvalidOptions() {
+
+  const now = new Date();
+  const currentYear = now.getFullYear();
+  const currentMonth = now.getMonth();
+
+  /* Monthly */
+  for (let y of MonthlyYearSelection.options) {
+    y.disabled = parseInt(y.value) > currentYear;
+  }
+
+  for (let i = 0; i < MonthSelection.options.length; i++) {
+    const selectedYear = parseInt(MonthlyYearSelection.value);
+    if (selectedYear > currentYear ||
+       (selectedYear === currentYear && i > currentMonth)) {
+      MonthSelection.options[i].disabled = true;
+    } else {
+      MonthSelection.options[i].disabled = false;
+    }
+  }
+
+  /* Seasonal */
+  for (let y of SeasonYearSelection.options) {
+    y.disabled = parseInt(y.value) > currentYear;
+  }
 }
 
 /* ---------- View Switch ---------- */
@@ -232,23 +254,25 @@ function showView(view) {
 /* ---------- Initialize ---------- */
 window.onload = function() {
 
-  const now = new Date();
-  const monthNames = [
-    "January","February","March","April","May","June",
-    "July","August","September","October","November","December"
-  ];
+  /* Default to January 2026 */
+  MonthSelection.value = "January";
+  MonthlyYearSelection.value = "2026";
 
-  MonthSelection.value = monthNames[now.getMonth()];
-  MonthlyYearSelection.value = now.getFullYear();
-
+  disableInvalidOptions();
   setMode("monthly");
 };
 
 /* ---------- Listeners ---------- */
 MonthSelection.addEventListener("change", updateFrames);
-MonthlyYearSelection.addEventListener("change", updateFrames);
+MonthlyYearSelection.addEventListener("change", () => {
+  disableInvalidOptions();
+  updateFrames();
+});
 SeasonSelection.addEventListener("change", updateFrames);
-SeasonYearSelection.addEventListener("change", updateFrames);
+SeasonYearSelection.addEventListener("change", () => {
+  disableInvalidOptions();
+  updateFrames();
+});
 
 </script>
 </body>
