@@ -1,3 +1,5 @@
+# generate_map.py
+
 import pandas as pd
 import geopandas as gpd
 from pathlib import Path
@@ -10,18 +12,29 @@ def generate_map(time_period, mode="monthly"):
         output_path = Path(f"months/{time_period}.html")
         grid_file = "grid_big.geojson"
 
-    elif mode == "newseason":
-        csv_path = Path(f"new seasons/{time_period}.csv")
-        output_path = Path(f"new seasons/{time_period}.html")
+    elif mode == "seasonal":
+        csv_path = Path(f"seasons/{time_period}.csv")
+        output_path = Path(f"seasons/{time_period}.html")
         grid_file = "grid.geojson"
 
     else:
-        raise ValueError("Mode must be 'monthly' or 'newseason'")
+        raise ValueError("Mode must be 'monthly' or 'seasonal'")
 
     if not csv_path.exists():
-        raise FileNotFoundError(f"{csv_path} not found")
+        print(f"⚠ {csv_path} not found. Skipping map generation.")
+        return
 
     df = pd.read_csv(csv_path)
+
+    if df.empty:
+        print(f"⚠ {time_period} is empty. Generating blank map.")
+        df["longitude"] = []
+        df["latitude"] = []
+
+    required_cols = ["longitude", "latitude"]
+    for col in required_cols:
+        if col not in df.columns:
+            raise ValueError(f"{col} column missing in {csv_path}")
 
     # Convert to GeoDataFrame
     gdf_points = gpd.GeoDataFrame(
@@ -30,39 +43,74 @@ def generate_map(time_period, mode="monthly"):
         crs="EPSG:4326"
     )
 
-    grid = gpd.read_file(grid_file).to_crs("EPSG:4326")
+    grid = gpd.read_file(grid_file)
+
+    if grid.crs != "EPSG:4326":
+        grid = grid.to_crs("EPSG:4326")
+
+    # Remove leftover spatial join columns
+    for col in ["index_right", "index_left"]:
+        if col in gdf_points.columns:
+            gdf_points = gdf_points.drop(columns=[col])
+        if col in grid.columns:
+            grid = grid.drop(columns=[col])
 
     # Spatial join
-    joined = gpd.sjoin(
-        gdf_points,
-        grid,
-        how="inner",
-        predicate="within"
-    )
+    if not gdf_points.empty:
+        joined = gpd.sjoin(
+            gdf_points,
+            grid,
+            how="inner",
+            predicate="within",
+            lsuffix="pt",
+            rsuffix="grid"
+        )
+    else:
+        joined = gpd.GeoDataFrame(columns=gdf_points.columns)
 
     summaries = []
 
-    for grid_id, group in joined.groupby("grid_id"):
+    if not joined.empty:
 
-        total_obs = len(group)
+        for grid_id, group in joined.groupby("grid_id"):
 
-        top_species = group["commonName"].value_counts().head(5)
-        habitat = group["habitatSpecialization"].dropna().value_counts().head(5)
-        migratory = group["migratoryPattern"].dropna().value_counts().head(5)
+            total_obs = len(group)
 
-        summaries.append({
-            "grid_id": grid_id,
-            "observations": int(total_obs),
-            "top_species": top_species.index.tolist(),
-            "top_counts": top_species.values.tolist(),
-            "habitat": habitat.index.tolist(),
-            "migratory": migratory.index.tolist()
-        })
+            top_species = (
+                group["commonName"]
+                .dropna()
+                .value_counts()
+                .head(5)
+            )
+
+            habitat = (
+                group.get("habitatSpecialization", pd.Series())
+                .dropna()
+                .value_counts()
+                .head(5)
+            )
+
+            migratory = (
+                group.get("migratoryPattern", pd.Series())
+                .dropna()
+                .value_counts()
+                .head(5)
+            )
+
+            summaries.append({
+                "grid_id": grid_id,
+                "observations": int(total_obs),
+                "top_species": top_species.index.tolist(),
+                "habitat": habitat.index.tolist(),
+                "migratory": migratory.index.tolist()
+            })
 
     summary_df = pd.DataFrame(summaries)
 
-    grid = grid.merge(summary_df, on="grid_id", how="left")
-    grid["observations"] = grid["observations"].fillna(0)
+    if not summary_df.empty:
+        grid = grid.merge(summary_df, on="grid_id", how="left")
+
+    grid["observations"] = grid.get("observations", 0).fillna(0)
 
     geojson_grid = grid.to_json()
     geojson_points = gdf_points.to_json()
@@ -90,6 +138,10 @@ html, body {{ margin:0; height:100%; }}
   border-radius:8px;
   z-index:1000;
 }}
+button {{
+  margin:3px;
+  padding:6px 10px;
+}}
 </style>
 </head>
 <body>
@@ -106,7 +158,7 @@ html, body {{ margin:0; height:100%; }}
 var map = L.map('map').setView([19.5, 75.3], 6);
 
 L.tileLayer(
-  'https://{{s}}.tile.openstreetmap.org/{{z}}/{{x}}/{{y}}.png',
+  'https://{{s}}.tile.openstreetmap.org/{{z}}/{{x}}.png',
   {{ attribution: '© OpenStreetMap contributors' }}
 ).addTo(map);
 
@@ -125,7 +177,7 @@ function getColor(d) {{
 
 function style(feature) {{
   return {{
-    fillColor: getColor(feature.properties.observations),
+    fillColor: getColor(feature.properties.observations || 0),
     weight: 1,
     color: '#555',
     fillOpacity: 0.6
@@ -133,18 +185,17 @@ function style(feature) {{
 }}
 
 function onEachGrid(feature, layer) {{
-
   var p = feature.properties;
 
   var content =
     "<b>{time_period}</b><br>" +
-    "Grid ID: " + p.grid_id + "<br>" +
-    "Observations: " + p.observations + "<br><br>" +
-    "<b>Top 5 species</b><br>" +
+    "Grid ID: " + (p.grid_id || "") + "<br>" +
+    "Observations: " + (p.observations || 0) + "<br><br>" +
+    "<b>Top species</b><br>" +
     (p.top_species || []).join("<br>") + "<br><br>" +
-    "<b>Habitat specializations</b><br>" +
+    "<b>Habitat</b><br>" +
     (p.habitat || []).join(", ") + "<br><br>" +
-    "<b>Migratory patterns</b><br>" +
+    "<b>Migratory</b><br>" +
     (p.migratory || []).join(", ");
 
   layer.bindPopup(content);
@@ -182,5 +233,3 @@ function showPoints() {{
 
     with open(output_path, "w", encoding="utf-8") as f:
         f.write(html)
-
-    print(f"{mode.capitalize()} map generated: {time_period}")
