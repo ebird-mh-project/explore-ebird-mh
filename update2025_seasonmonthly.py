@@ -32,7 +32,9 @@ YEAR_MONTHS = {
 }
 
 
+# ===============================
 # MONTHLY FETCH + GENERATE
+# ===============================
 
 def run_monthly():
 
@@ -41,20 +43,23 @@ def run_monthly():
         for month in months:
 
             month_name = calendar.month_name[month]
+            time_period = f"{month_name}_{year}"
 
-            print(f"\nProcessing {month_name} {year}")
+            print(f"\nProcessing {time_period}")
 
             # 1. Fetch CSV
             fetch_month_data(year, month)
 
-            # 2. Generate map
-            generate_map(month_name, year)
+            # 2. Generate monthly map
+            generate_map(time_period, mode="monthly")
 
-            # 3. Generate summary
-            generate_summary(month_name, year)
+            # 3. Generate monthly summary
+            generate_summary(time_period)
 
 
+# ===============================
 # BUILD SEASONAL DATA
+# ===============================
 
 def season_from_month(month):
     if month in [3, 4, 5]:
@@ -73,8 +78,10 @@ def build_seasonal():
 
         for month in months:
 
+            month_name = calendar.month_name[month]
             season = season_from_month(month)
 
+            # Handle Jan/Feb winter belonging to previous year
             if season == "Winter" and month in [1, 2]:
                 season_year = year - 1
             else:
@@ -82,7 +89,7 @@ def build_seasonal():
 
             key = f"{season} {season_year}"
 
-            csv_path = Path(f"months/{calendar.month_name[month]}_{year}.csv")
+            csv_path = Path(f"months/{month_name}_{year}.csv")
 
             if not csv_path.exists():
                 continue
@@ -95,18 +102,22 @@ def build_seasonal():
             seasonal_data[key].append(df)
 
     # Save seasonal CSVs
+    out_dir = Path("new seasons")
+    out_dir.mkdir(exist_ok=True)
+
     for key, dfs in seasonal_data.items():
 
         season_df = pd.concat(dfs, ignore_index=True)
 
-        out_dir = Path("new seasons")
-        out_dir.mkdir(exist_ok=True)
-
-        season_df.to_csv(out_dir / f"{key}.csv", index=False)
+        season_csv_path = out_dir / f"{key}.csv"
+        season_df.to_csv(season_csv_path, index=False)
 
         print(f"Season built: {key}")
 
+
+# ===============================
 # GENERATE SEASONAL MAP + SUMMARY
+# ===============================
 
 def run_seasonal_outputs():
 
@@ -114,15 +125,23 @@ def run_seasonal_outputs():
 
     for file in season_dir.glob("*.csv"):
 
-        season_year = file.stem
+        season_year = file.stem  # e.g. "Monsoon 2025"
 
         print(f"Generating seasonal outputs for {season_year}")
 
-        generate_map(season_year)
+        # Seasonal map
+        generate_map(season_year, mode="newseason")
+
+        # Seasonal summary
         generate_seasonal_summary(season_year)
 
+
+# ===============================
 # MAIN
+# ===============================
+
 if __name__ == "__main__":
+
     run_monthly()
     build_seasonal()
     run_seasonal_outputs()
