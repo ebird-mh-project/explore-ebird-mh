@@ -67,6 +67,13 @@ def fetch_month_data(year, month):
         return
 
     df = pd.DataFrame(all_records)
+    df = df.rename(columns={
+    "comName": "commonName",
+    "sciName": "scientificName",
+    "obsDt": "observationDate",
+    "howMany": "observationCount",
+    "lat": "latitude",
+    "lng": "longitude"})
 
     month_name = calendar.month_name[month]
 
