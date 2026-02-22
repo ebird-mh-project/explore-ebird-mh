@@ -13,60 +13,54 @@ def generate_map(time_period, mode="monthly"):
         grid_file = "grid_big.geojson"
 
     elif mode == "seasonal":
-        csv_path = Path(f"seasons/{time_period}.csv")
-        output_path = Path(f"seasons/{time_period}.html")
+        csv_path = Path(f"new seasons/{time_period}.csv")
+        output_path = Path(f"new seasons/{time_period}.html")
         grid_file = "grid.geojson"
 
     else:
         raise ValueError("Mode must be 'monthly' or 'seasonal'")
 
     if not csv_path.exists():
-        print(f"⚠ {csv_path} not found. Skipping map generation.")
+        print(f"⚠ {csv_path} not found. Skipping.")
         return
 
     df = pd.read_csv(csv_path)
 
-    if df.empty:
-        print(f"⚠ {time_period} is empty. Generating blank map.")
-        df["longitude"] = []
-        df["latitude"] = []
+    # Standardize column names
+    df = df.rename(columns={
+        "lat": "latitude",
+        "lng": "longitude",
+        "comName": "commonName",
+        "sciName": "scientificName",
+        "obsDt": "observationDate",
+        "howMany": "observationCount"
+    })
 
-    required_cols = ["longitude", "latitude"]
-    for col in required_cols:
-        if col not in df.columns:
-            raise ValueError(f"{col} column missing in {csv_path}")
+    if df.empty or "longitude" not in df.columns:
+        print(f"⚠ {time_period} empty or invalid.")
+        return
 
-    # Convert to GeoDataFrame
     gdf_points = gpd.GeoDataFrame(
         df,
         geometry=gpd.points_from_xy(df.longitude, df.latitude),
         crs="EPSG:4326"
     )
 
-    grid = gpd.read_file(grid_file)
-
-    if grid.crs != "EPSG:4326":
-        grid = grid.to_crs("EPSG:4326")
+    grid = gpd.read_file(grid_file).to_crs("EPSG:4326")
 
     # Remove leftover spatial join columns
-    for col in ["index_right", "index_left"]:
+    for col in ["index_left", "index_right"]:
         if col in gdf_points.columns:
             gdf_points = gdf_points.drop(columns=[col])
         if col in grid.columns:
             grid = grid.drop(columns=[col])
 
-    # Spatial join
-    if not gdf_points.empty:
-        joined = gpd.sjoin(
-            gdf_points,
-            grid,
-            how="inner",
-            predicate="within",
-            lsuffix="pt",
-            rsuffix="grid"
-        )
-    else:
-        joined = gpd.GeoDataFrame(columns=gdf_points.columns)
+    joined = gpd.sjoin(
+        gdf_points,
+        grid,
+        how="inner",
+        predicate="within"
+    )
 
     summaries = []
 
@@ -74,35 +68,13 @@ def generate_map(time_period, mode="monthly"):
 
         for grid_id, group in joined.groupby("grid_id"):
 
-            total_obs = len(group)
-
-            top_species = (
-                group["commonName"]
-                .dropna()
-                .value_counts()
-                .head(5)
-            )
-
-            habitat = (
-                group.get("habitatSpecialization", pd.Series())
-                .dropna()
-                .value_counts()
-                .head(5)
-            )
-
-            migratory = (
-                group.get("migratoryPattern", pd.Series())
-                .dropna()
-                .value_counts()
-                .head(5)
-            )
-
             summaries.append({
                 "grid_id": grid_id,
-                "observations": int(total_obs),
-                "top_species": top_species.index.tolist(),
-                "habitat": habitat.index.tolist(),
-                "migratory": migratory.index.tolist()
+                "observations": len(group),
+                "top_species": group["commonName"].dropna().value_counts().head(5).index.tolist(),
+                "habitat": group.get("habitatSpecialization", pd.Series()).dropna().value_counts().head(5).index.tolist(),
+                "migratory": group.get("migratoryPattern", pd.Series()).dropna().value_counts().head(5).index.tolist(),
+                "behaviour": group.get("behavior", pd.Series()).dropna().value_counts().head(5).index.tolist()
             })
 
     summary_df = pd.DataFrame(summaries)
@@ -113,7 +85,6 @@ def generate_map(time_period, mode="monthly"):
     grid["observations"] = grid.get("observations", 0).fillna(0)
 
     geojson_grid = grid.to_json()
-    geojson_points = gdf_points.to_json()
 
     html = f"""
 <!DOCTYPE html>
@@ -129,27 +100,12 @@ def generate_map(time_period, mode="monthly"):
 <style>
 html, body {{ margin:0; height:100%; }}
 #map {{ height:100%; }}
-#controls {{
-  position:absolute;
-  top:10px;
-  left:10px;
-  background:white;
-  padding:10px;
-  border-radius:8px;
-  z-index:1000;
-}}
-button {{
-  margin:3px;
-  padding:6px 10px;
+.leaflet-popup-content {{
+    font-size: 14px;
 }}
 </style>
 </head>
 <body>
-
-<div id="controls">
-<button onclick="showGrid()">Grid View</button>
-<button onclick="showPoints()">Point View</button>
-</div>
 
 <div id="map"></div>
 
@@ -158,21 +114,22 @@ button {{
 var map = L.map('map').setView([19.5, 75.3], 6);
 
 L.tileLayer(
-  'https://{{s}}.tile.openstreetmap.org/{{z}}/{{x}}.png',
-  {{ attribution: '© OpenStreetMap contributors' }}
+  'https://{{s}}.tile.openstreetmap.org/{{z}}/{{x}}/{{y}}.png',
+  {{
+    attribution: '© OpenStreetMap contributors'
+  }}
 ).addTo(map);
 
 var gridData = {geojson_grid};
-var pointData = {geojson_points};
 
 function getColor(d) {{
-  return d > 500 ? '#800026' :
-         d > 200 ? '#BD0026' :
-         d > 100 ? '#E31A1C' :
-         d > 50  ? '#FC4E2A' :
-         d > 20  ? '#FD8D3C' :
-         d > 0   ? '#FEB24C' :
-                   '#FFFFFF';
+  return d > 500 ? '#00441b' :
+         d > 200 ? '#006d2c' :
+         d > 100 ? '#238b45' :
+         d > 50  ? '#41ab5d' :
+         d > 20  ? '#74c476' :
+         d > 0   ? '#a1d99b' :
+                   '#f7fcf5';
 }}
 
 function style(feature) {{
@@ -180,7 +137,7 @@ function style(feature) {{
     fillColor: getColor(feature.properties.observations || 0),
     weight: 1,
     color: '#555',
-    fillOpacity: 0.6
+    fillOpacity: 0.7
   }};
 }}
 
@@ -191,38 +148,26 @@ function onEachGrid(feature, layer) {{
     "<b>{time_period}</b><br>" +
     "Grid ID: " + (p.grid_id || "") + "<br>" +
     "Observations: " + (p.observations || 0) + "<br><br>" +
-    "<b>Top species</b><br>" +
+
+    "<b>Top species:</b><br>" +
     (p.top_species || []).join("<br>") + "<br><br>" +
-    "<b>Habitat</b><br>" +
+
+    "<b>Habitat specializations:</b><br>" +
     (p.habitat || []).join(", ") + "<br><br>" +
-    "<b>Migratory</b><br>" +
-    (p.migratory || []).join(", ");
+
+    "<b>Migratory patterns:</b><br>" +
+    (p.migratory || []).join(", ") + "<br><br>" +
+
+    "<b>Common behaviours:</b><br>" +
+    (p.behaviour || []).join(", ");
 
   layer.bindPopup(content);
 }}
 
-var gridLayer = L.geoJSON(gridData, {{
+L.geoJSON(gridData, {{
   style: style,
   onEachFeature: onEachGrid
-}});
-
-var pointLayer = L.geoJSON(pointData, {{
-  pointToLayer: function(feature, latlng) {{
-    return L.circleMarker(latlng, {{radius:4}});
-  }}
-}});
-
-gridLayer.addTo(map);
-
-function showGrid() {{
-  map.removeLayer(pointLayer);
-  gridLayer.addTo(map);
-}}
-
-function showPoints() {{
-  map.removeLayer(gridLayer);
-  pointLayer.addTo(map);
-}}
+}}).addTo(map);
 
 </script>
 </body>
@@ -233,3 +178,5 @@ function showPoints() {{
 
     with open(output_path, "w", encoding="utf-8") as f:
         f.write(html)
+
+    print(f"✓ {mode.capitalize()} map generated: {time_period}")
