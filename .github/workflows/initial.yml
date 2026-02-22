@@ -24,6 +24,8 @@ jobs:
 
       - name: Run initial bootstrap
         run: python update2025_seasonmonthly.py
+        env:
+            EBIRD_API_KEY: ${{ secrets.EBIRD_API_KEY }}
 
       - name: Commit generated files
         run: |
