@@ -48,6 +48,10 @@ html, body {
   border-radius: 4px;
 }
 
+.hidden {
+  display: none;
+}
+
 #globalSearch {
   margin-left: auto;
   padding: 8px 10px;
@@ -113,39 +117,33 @@ html, body {
     Seasonal
   </button>
 
-  <button id="oldVersionBtn" onclick="loadOldSeasonal()">
+  <button id="oldVersionBtn" onclick="setMode('old')">
     Old (Season)
   </button>
 
-  <!-- Seasonal Controls -->
-  <select id="NewSeasonSelection">
-    <option value="Summer">Summer</option>
-    <option value="Monsoon">Monsoon</option>
-    <option value="Winter">Winter</option>
+  <!-- Monthly Controls -->
+  <select id="MonthSelection">
+    <option>January</option><option>February</option>
+    <option>March</option><option>April</option>
+    <option>May</option><option>June</option>
+    <option>July</option><option>August</option>
+    <option>September</option><option>October</option>
+    <option>November</option><option>December</option>
   </select>
 
-  <select id="NewSeasonYearSelection">
+  <select id="MonthlyYearSelection">
     <option>2025</option>
     <option>2026</option>
   </select>
 
-  <!-- Monthly Controls -->
-  <select id="MonthSelection">
-    <option>January</option>
-    <option>February</option>
-    <option>March</option>
-    <option>April</option>
-    <option>May</option>
-    <option>June</option>
-    <option>July</option>
-    <option>August</option>
-    <option>September</option>
-    <option>October</option>
-    <option>November</option>
-    <option>December</option>
+  <!-- Seasonal Controls (used for BOTH new + old) -->
+  <select id="SeasonSelection" class="hidden">
+    <option>Summer</option>
+    <option>Monsoon</option>
+    <option>Winter</option>
   </select>
 
-  <select id="MonthlyYearSelection">
+  <select id="SeasonYearSelection" class="hidden">
     <option>2025</option>
     <option>2026</option>
   </select>
@@ -176,85 +174,59 @@ function updateFrames() {
 
   if (mode === "monthly") {
 
-    const month = document.getElementById("MonthSelection").value;
-    const year = document.getElementById("MonthlyYearSelection").value;
+    const month = MonthSelection.value;
+    const year = MonthlyYearSelection.value;
 
-    document.getElementById("mapFrame").src =
-      `months/${month}_${year}.html`;
-
-    document.getElementById("summaryFrame").src =
-      `month summary/${month}_${year}.html`;
+    mapFrame.src = `months/${month}_${year}.html`;
+    summaryFrame.src = `month summary/${month}_${year}.html`;
 
   } else if (mode === "newseason") {
 
-    const season = document.getElementById("NewSeasonSelection").value;
-    const year = document.getElementById("NewSeasonYearSelection").value;
+    const season = SeasonSelection.value;
+    const year = SeasonYearSelection.value;
 
-    document.getElementById("mapFrame").src =
-      `new seasons/${season} ${year}.html`;
+    mapFrame.src = `new seasons/${season} ${year}.html`;
+    summaryFrame.src = `new season summary/${season} ${year}.html`;
 
-    document.getElementById("summaryFrame").src =
-      `new season summary/${season} ${year}.html`;
+  } else if (mode === "old") {
+
+    const season = SeasonSelection.value;
+    const year = SeasonYearSelection.value;
+
+    mapFrame.src = `seasons/${season} ${year}.html`;
+    summaryFrame.src = `season summary/${season} ${year}.html`;
   }
 }
 
 /* ---------- Mode Switch ---------- */
 function setMode(newMode) {
+
   mode = newMode;
+
+  if (mode === "monthly") {
+
+    MonthSelection.classList.remove("hidden");
+    MonthlyYearSelection.classList.remove("hidden");
+
+    SeasonSelection.classList.add("hidden");
+    SeasonYearSelection.classList.add("hidden");
+
+  } else {
+
+    MonthSelection.classList.add("hidden");
+    MonthlyYearSelection.classList.add("hidden");
+
+    SeasonSelection.classList.remove("hidden");
+    SeasonYearSelection.classList.remove("hidden");
+  }
+
   updateFrames();
-}
-
-/* ---------- Old Seasonal ---------- */
-function loadOldSeasonal() {
-
-  const season = document.getElementById("NewSeasonSelection").value;
-  const year = document.getElementById("NewSeasonYearSelection").value;
-
-  document.getElementById("mapFrame").src =
-    `seasons/${season} ${year}.html`;
-
-  document.getElementById("summaryFrame").src =
-    `season summary/${season} ${year}.html`;
-}
-
-/* ---------- Disable Invalid Options ---------- */
-function disableInvalidOptions() {
-
-  const now = new Date();
-  const currentYear = now.getFullYear();
-  const currentMonth = now.getMonth(); // 0-indexed
-
-  /* Disable future months */
-  const monthSelect = document.getElementById("MonthSelection");
-  const selectedYear = parseInt(document.getElementById("MonthlyYearSelection").value);
-
-  for (let i = 0; i < monthSelect.options.length; i++) {
-
-    if (selectedYear > currentYear) {
-      monthSelect.options[i].disabled = true;
-    }
-    else if (selectedYear === currentYear && i > currentMonth) {
-      monthSelect.options[i].disabled = true;
-    }
-    else {
-      monthSelect.options[i].disabled = false;
-    }
-  }
-
-  /* Disable future seasonal years */
-  const seasonYearSelect = document.getElementById("NewSeasonYearSelection");
-
-  for (let option of seasonYearSelect.options) {
-    option.disabled = parseInt(option.value) > currentYear;
-  }
 }
 
 /* ---------- View Switch ---------- */
 function showView(view) {
-  document.getElementById("mapView")
-    .classList.toggle("active", view === "map");
-  document.getElementById("aboutView")
-    .classList.toggle("active", view === "about");
+  mapView.classList.toggle("active", view === "map");
+  aboutView.classList.toggle("active", view === "about");
 }
 
 /* ---------- Initialize ---------- */
@@ -266,28 +238,17 @@ window.onload = function() {
     "July","August","September","October","November","December"
   ];
 
-  document.getElementById("MonthSelection")
-    .value = monthNames[now.getMonth()];
+  MonthSelection.value = monthNames[now.getMonth()];
+  MonthlyYearSelection.value = now.getFullYear();
 
-  document.getElementById("MonthlyYearSelection")
-    .value = now.getFullYear();
-
-  disableInvalidOptions();
-  updateFrames();
+  setMode("monthly");
 };
 
-/* Re-check when year changes */
-document.getElementById("MonthlyYearSelection")
-  .addEventListener("change", disableInvalidOptions);
-
-document.getElementById("NewSeasonYearSelection")
-  .addEventListener("change", disableInvalidOptions);
-
-document.getElementById("MonthSelection")
-  .addEventListener("change", updateFrames);
-
-document.getElementById("NewSeasonSelection")
-  .addEventListener("change", updateFrames);
+/* ---------- Listeners ---------- */
+MonthSelection.addEventListener("change", updateFrames);
+MonthlyYearSelection.addEventListener("change", updateFrames);
+SeasonSelection.addEventListener("change", updateFrames);
+SeasonYearSelection.addEventListener("change", updateFrames);
 
 </script>
 </body>
