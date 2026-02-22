@@ -20,8 +20,7 @@ import pandas as pd
 from fetch_data_initial import fetch_month_data
 from generate_map import generate_map
 from generate_summary import generate_summary
-from generate_seasonal_map import generate_seasonal_map
-from generate_seasonal_summary import generate_seasonal_summary
+from generate_summary_seasonal import generate_seasonal_summary
 
 
 MONTHS_2025 = list(range(1, 13))
@@ -119,7 +118,7 @@ def run_seasonal_outputs():
 
         print(f"Generating seasonal outputs for {season_year}")
 
-        generate_seasonal_map(season_year)
+        generate_map(season_year)
         generate_seasonal_summary(season_year)
 
 # MAIN
