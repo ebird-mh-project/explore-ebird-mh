@@ -36,14 +36,14 @@ html, body {
 }
 
 #monthlyBtn, #seasonalBtn {
-  background: darkgreen;
+  background: #555;
   color: white;
   border: none;
   border-radius: 4px;
 }
 
-#oldVersionBtn {
-  background: #555;
+#originalBtn {
+  background: darkgreen;
   color: white;
   border: none;
   border-radius: 4px;
@@ -53,7 +53,7 @@ html, body {
   display: none;
 }
 
-/* Active Mode Indicator */
+/* Mode Indicator */
 #modeIndicator {
   margin-left: auto;
   padding: 6px 20px;
@@ -103,6 +103,16 @@ html, body {
   bottom: 0;
   border-left: 1px solid #ccc;
   background: #f9f9f9;
+  overflow-y: auto;
+}
+
+#aboutView {
+  padding: 40px;
+  overflow-y: auto;
+}
+
+a {
+  color: darkgreen;
 }
 </style>
 </head>
@@ -114,12 +124,20 @@ html, body {
   <button onclick="showView('map')">Map</button>
   <button onclick="showView('about')">About</button>
 
-  <button id="monthlyBtn" onclick="setMode('monthly')">Monthly</button>
-  <button id="seasonalBtn" onclick="setMode('newseason')">Seasonal</button>
-  <button id="oldVersionBtn" onclick="setMode('old')">Old (Season)</button>
+  <button id="originalBtn" onclick="setMode('old')">
+    Original (seasonal)
+  </button>
+
+  <button id="seasonalBtn" onclick="setMode('newseason')">
+    Seasonal (automated)
+  </button>
+
+  <button id="monthlyBtn" onclick="setMode('monthly')">
+    Monthly (automated)
+  </button>
 
   <!-- Monthly Controls -->
-  <select id="MonthSelection">
+  <select id="MonthSelection" class="hidden">
     <option>January</option><option>February</option>
     <option>March</option><option>April</option>
     <option>May</option><option>June</option>
@@ -128,24 +146,24 @@ html, body {
     <option>November</option><option>December</option>
   </select>
 
-  <select id="MonthlyYearSelection">
+  <select id="MonthlyYearSelection" class="hidden">
     <option>2025</option>
     <option>2026</option>
   </select>
 
   <!-- Seasonal Controls -->
-  <select id="SeasonSelection" class="hidden">
+  <select id="SeasonSelection">
     <option>Summer</option>
     <option>Monsoon</option>
     <option>Winter</option>
   </select>
 
-  <select id="SeasonYearSelection" class="hidden">
+  <select id="SeasonYearSelection">
     <option>2025</option>
     <option>2026</option>
   </select>
 
-  <div id="modeIndicator">MONTHLY</div>
+  <div id="modeIndicator">ORIGINAL (SEASONAL)</div>
 
 </div>
 
@@ -159,35 +177,73 @@ html, body {
 </div>
 
 <div id="aboutView" class="view">
-  <h1 style="padding:40px;">About this project</h1>
+  <h2>About this dashboard</h2>
+  <p>
+    This is a dashboard of eBird data for Maharashtra. The original version
+    (divided into seasons) was analysed first.
+  </p>
+
+  <p>
+    You'll notice that the Monthly (automated) and Seasonal (automated) views
+    have more sparse analysis, and that's because they only really exist
+    because I wanted to delve into CI/CD with GitHub Actions & YAML workflows,
+    so I was focused on learning THAT and encountered some difficulty in
+    automating some parts of my original process.
+  </p>
+
+  <p>
+    I may improve this dashboard, but it was mostly a prototype so I could
+    figure out a template for displaying a map and some extra data on the side,
+    and also so I could learn CI/CD stuff (intention to use it in future projects).
+    Did the entirety of the original analysis by myself, used ChatGPT to do
+    some parts of the automation process (along with cleaning up my newbie
+    attempts at the webdev stuff).
+  </p>
+
+  <p>
+    I will be using the knowledge gained in making this to create an SDM
+    dashboard later, where the right-side window will have a NICE looking
+    dashboard. Once I've deployed it, a link will be available here.
+  </p>
+
+  <p>
+    <a href="https://github.com/ebird-mh-project/explore-ebird-mh/tree/main" target="_blank">
+      Find the repo here
+    </a><br><br>
+
+    <a href="https://github.com/Chandra-Madhubani" target="_blank">
+      Find my GitHub profile here
+    </a><br><br>
+
+    <a href="https://www.linkedin.com/in/chandra-thakur-5b0a9534a/" target="_blank">
+      Find my LinkedIn here
+    </a><br><br>
+
+    Personal website will be created & added here later.
+  </p>
+
 </div>
 
 <script>
 
-let mode = "monthly";
+let mode = "old";
 
 /* ---------- Update Frames ---------- */
 function updateFrames() {
 
   if (mode === "monthly") {
-    const month = MonthSelection.value;
-    const year = MonthlyYearSelection.value;
-    mapFrame.src = `months/${month}_${year}.html`;
-    summaryFrame.src = `month summary/${month}_${year}.html`;
+    mapFrame.src = `months/${MonthSelection.value}_${MonthlyYearSelection.value}.html`;
+    summaryFrame.src = `month summary/${MonthSelection.value}_${MonthlyYearSelection.value}.html`;
   }
 
   else if (mode === "newseason") {
-    const season = SeasonSelection.value;
-    const year = SeasonYearSelection.value;
-    mapFrame.src = `new seasons/${season} ${year}.html`;
-    summaryFrame.src = `new season summary/${season} ${year}.html`;
+    mapFrame.src = `new seasons/${SeasonSelection.value} ${SeasonYearSelection.value}.html`;
+    summaryFrame.src = `new season summary/${SeasonSelection.value} ${SeasonYearSelection.value}.html`;
   }
 
   else if (mode === "old") {
-    const season = SeasonSelection.value;
-    const year = SeasonYearSelection.value;
-    mapFrame.src = `seasons/${season} ${year}.html`;
-    summaryFrame.src = `season summary/${season} ${year}.html`;
+    mapFrame.src = `seasons/${SeasonSelection.value} ${SeasonYearSelection.value}.html`;
+    summaryFrame.src = `season summary/${SeasonSelection.value} ${SeasonYearSelection.value}.html`;
   }
 }
 
@@ -201,7 +257,15 @@ function setMode(newMode) {
     MonthlyYearSelection.classList.remove("hidden");
     SeasonSelection.classList.add("hidden");
     SeasonYearSelection.classList.add("hidden");
-    modeIndicator.textContent = "MONTHLY";
+    modeIndicator.textContent = "MONTHLY (AUTOMATED)";
+  }
+
+  else if (mode === "newseason") {
+    MonthSelection.classList.add("hidden");
+    MonthlyYearSelection.classList.add("hidden");
+    SeasonSelection.classList.remove("hidden");
+    SeasonYearSelection.classList.remove("hidden");
+    modeIndicator.textContent = "SEASONAL (AUTOMATED)";
   }
 
   else {
@@ -209,40 +273,10 @@ function setMode(newMode) {
     MonthlyYearSelection.classList.add("hidden");
     SeasonSelection.classList.remove("hidden");
     SeasonYearSelection.classList.remove("hidden");
-
-    modeIndicator.textContent =
-      (mode === "newseason") ? "SEASONAL" : "OLD (SEASON)";
+    modeIndicator.textContent = "ORIGINAL (SEASONAL)";
   }
 
   updateFrames();
-}
-
-/* ---------- Disable Unavailable Files ---------- */
-function disableInvalidOptions() {
-
-  const now = new Date();
-  const currentYear = now.getFullYear();
-  const currentMonth = now.getMonth();
-
-  /* Monthly */
-  for (let y of MonthlyYearSelection.options) {
-    y.disabled = parseInt(y.value) > currentYear;
-  }
-
-  for (let i = 0; i < MonthSelection.options.length; i++) {
-    const selectedYear = parseInt(MonthlyYearSelection.value);
-    if (selectedYear > currentYear ||
-       (selectedYear === currentYear && i > currentMonth)) {
-      MonthSelection.options[i].disabled = true;
-    } else {
-      MonthSelection.options[i].disabled = false;
-    }
-  }
-
-  /* Seasonal */
-  for (let y of SeasonYearSelection.options) {
-    y.disabled = parseInt(y.value) > currentYear;
-  }
 }
 
 /* ---------- View Switch ---------- */
@@ -253,26 +287,16 @@ function showView(view) {
 
 /* ---------- Initialize ---------- */
 window.onload = function() {
-
-  /* Default to January 2026 */
-  MonthSelection.value = "January";
-  MonthlyYearSelection.value = "2026";
-
-  disableInvalidOptions();
-  setMode("monthly");
+  SeasonSelection.value = "Summer";
+  SeasonYearSelection.value = "2025";
+  setMode("old");
 };
 
 /* ---------- Listeners ---------- */
 MonthSelection.addEventListener("change", updateFrames);
-MonthlyYearSelection.addEventListener("change", () => {
-  disableInvalidOptions();
-  updateFrames();
-});
+MonthlyYearSelection.addEventListener("change", updateFrames);
 SeasonSelection.addEventListener("change", updateFrames);
-SeasonYearSelection.addEventListener("change", () => {
-  disableInvalidOptions();
-  updateFrames();
-});
+SeasonYearSelection.addEventListener("change", updateFrames);
 
 </script>
 </body>
