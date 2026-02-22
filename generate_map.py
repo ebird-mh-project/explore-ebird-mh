@@ -1,11 +1,26 @@
 import pandas as pd
 import geopandas as gpd
-import json
 from pathlib import Path
+
 
 def generate_map(time_period, mode="monthly"):
 
-    csv_path = Path(f"{mode}s/{time_period}/{time_period}.csv")
+    if mode == "monthly":
+        csv_path = Path(f"months/{time_period}.csv")
+        output_path = Path(f"months/{time_period}.html")
+        grid_file = "grid_big.geojson"
+
+    elif mode == "newseason":
+        csv_path = Path(f"new seasons/{time_period}.csv")
+        output_path = Path(f"new seasons/{time_period}.html")
+        grid_file = "grid.geojson"
+
+    else:
+        raise ValueError("Mode must be 'monthly' or 'newseason'")
+
+    if not csv_path.exists():
+        raise FileNotFoundError(f"{csv_path} not found")
+
     df = pd.read_csv(csv_path)
 
     # Convert to GeoDataFrame
@@ -15,13 +30,7 @@ def generate_map(time_period, mode="monthly"):
         crs="EPSG:4326"
     )
 
-    # Choose grid file
-    if mode == "monthly":
-        grid = gpd.read_file("grid_big.geojson")
-    else:
-        grid = gpd.read_file("grid.geojson")
-
-    grid = grid.to_crs("EPSG:4326")
+    grid = gpd.read_file(grid_file).to_crs("EPSG:4326")
 
     # Spatial join
     joined = gpd.sjoin(
@@ -38,9 +47,8 @@ def generate_map(time_period, mode="monthly"):
         total_obs = len(group)
 
         top_species = group["commonName"].value_counts().head(5)
-
-        habitat = group["habitatSpecialization"].value_counts().head(5)
-        migratory = group["migratoryPattern"].value_counts().head(5)
+        habitat = group["habitatSpecialization"].dropna().value_counts().head(5)
+        migratory = group["migratoryPattern"].dropna().value_counts().head(5)
 
         summaries.append({
             "grid_id": grid_id,
@@ -170,7 +178,7 @@ function showPoints() {{
 </html>
 """
 
-    output_path = Path(f"{mode}s/{time_period}.html")
+    output_path.parent.mkdir(exist_ok=True)
 
     with open(output_path, "w", encoding="utf-8") as f:
         f.write(html)
