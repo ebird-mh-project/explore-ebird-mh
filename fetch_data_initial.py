@@ -56,7 +56,7 @@ def fetch_month_data(year, month):
 
         all_records.extend(daily_data)
 
-        print(f"{date_str} → {len(daily_data)} records")
+        print(f"{date_str} → {len(daily_data)} records", flush=True)
 
         time.sleep(0.4)  # Avoid rate limits
 
