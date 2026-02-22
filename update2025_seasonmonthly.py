@@ -13,6 +13,12 @@ After this: update About page very briefly
 then get to the SDM project, with this dashboard as the foundation for the presentation (but more DYNAMIC; have more interesting UI elements to select new variables)
 '''
 
+"""
+Robust bootstrap pipeline
+Fetch → verify CSV → generate monthly outputs
+Then build seasonal → generate seasonal outputs
+"""
+
 import calendar
 from pathlib import Path
 import pandas as pd
@@ -47,13 +53,22 @@ def run_monthly():
 
             print(f"\nProcessing {time_period}")
 
-            # 1. Fetch CSV
+            # 1️⃣ Fetch CSV
             fetch_month_data(year, month)
 
-            # 2. Generate monthly map
+            csv_path = Path(f"months/{time_period}.csv")
+
+            # 2️⃣ VERIFY FILE EXISTS BEFORE CONTINUING
+            if not csv_path.exists():
+                print(f"⚠ CSV not created for {time_period}. Skipping.")
+                continue
+
+            print(f"✓ CSV confirmed: {csv_path}")
+
+            # 3️⃣ Generate monthly map
             generate_map(time_period, mode="monthly")
 
-            # 3. Generate monthly summary
+            # 4️⃣ Generate monthly summary
             generate_summary(time_period)
 
 
@@ -95,26 +110,29 @@ def build_seasonal():
                 continue
 
             df = pd.read_csv(csv_path)
-            df = df.rename(columns={ "comName": "commonName",
-                                    "sciName": "scientificName", "obsDt": "observationDate",
-                                    "howMany": "observationCount","lat": "latitude","lng": "longitude"})
+
             if key not in seasonal_data:
                 seasonal_data[key] = []
 
             seasonal_data[key].append(df)
 
     # Save seasonal CSVs
-    out_dir = Path("new seasons")
+    out_dir = Path("seasons")
     out_dir.mkdir(exist_ok=True)
 
     for key, dfs in seasonal_data.items():
 
-        season_df = pd.concat(dfs, ignore_index=True)
-
         season_csv_path = out_dir / f"{key}.csv"
+
+        # Skip if already exists
+        if season_csv_path.exists():
+            print(f"✓ {key} already built. Skipping.")
+            continue
+
+        season_df = pd.concat(dfs, ignore_index=True)
         season_df.to_csv(season_csv_path, index=False)
 
-        print(f"Season built: {key}")
+        print(f"✓ Season built: {key}")
 
 
 # ===============================
@@ -123,19 +141,16 @@ def build_seasonal():
 
 def run_seasonal_outputs():
 
-    season_dir = Path("new seasons")
+    season_dir = Path("seasons")
 
     for file in season_dir.glob("*.csv"):
 
-        season_year = file.stem  # e.g. "Monsoon 2025"
+        season_name = file.stem  # e.g. "Monsoon 2025"
 
-        print(f"Generating seasonal outputs for {season_year}")
+        print(f"Generating seasonal outputs for {season_name}")
 
-        # Seasonal map
-        generate_map(season_year, mode="newseason")
-
-        # Seasonal summary
-        generate_seasonal_summary(season_year)
+        generate_map(season_name, mode="seasonal")
+        generate_seasonal_summary(season_name)
 
 
 # ===============================
