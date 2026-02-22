@@ -1,214 +1,293 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-<meta charset="utf-8"/>
-<title>Maharashtra eBird Dashboard</title>
+<meta charset="UTF-8">
+<title>Maharashtra: eBird Data</title>
 
 <style>
-body {
-  margin:0;
+html, body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
   font-family: Arial, sans-serif;
+  overflow: hidden;
 }
 
-header {
-  background:#1b5e20;
-  color:white;
-  padding:15px;
-  text-align:center;
+#topbar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 55px;
+  background: #222;
+  color: white;
+  display: flex;
+  align-items: center;
+  padding: 0 12px;
+  gap: 10px;
+  z-index: 1000;
 }
 
-.controls {
-  padding:15px;
-  background:#f5f5f5;
-  display:flex;
-  gap:10px;
-  justify-content:center;
-  flex-wrap:wrap;
-  align-items:center;
+#topbar button, #topbar select {
+  padding: 6px 8px;
+  font-size: 14px;
+  cursor: pointer;
 }
 
-select, button {
-  padding:6px 10px;
-  font-size:14px;
+#toggleModeBtn {
+  background: darkgreen;
+  color: white;
+  border: none;
+  border-radius: 4px;
 }
 
-button.green {
-  background:#2e7d32;
-  color:white;
-  border:none;
+#oldVersionBtn {
+  background: #444;
+  color: white;
+  border: none;
+  border-radius: 4px;
 }
 
-button.gray {
-  background:#9e9e9e;
-  color:white;
-  border:none;
+#globalSearch {
+  margin-left: auto;
+  padding: 8px 10px;
+  width: 240px;
+  border-radius: 6px;
+  border: none;
 }
 
-button.active {
-  outline:3px solid #1b5e20;
+.view {
+  position: fixed;
+  top: 55px;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.4s ease;
 }
 
-iframe {
-  width:100%;
-  height:85vh;
-  border:none;
+.view.active {
+  opacity: 1;
+  visibility: visible;
+}
+
+#mapContainer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 320px;
+  bottom: 0;
+}
+
+#mapFrame, #summaryFrame {
+  width: 100%;
+  height: 100%;
+  border: none;
+  transition: opacity 0.3s ease;
+}
+
+#summaryPanel {
+  position: fixed;
+  top: 55px;
+  right: 0;
+  width: 320px;
+  bottom: 0;
+  border-left: 1px solid #ccc;
+  background: #f9f9f9;
+}
+
+.fade-out {
+  opacity: 0;
 }
 </style>
 </head>
+
 <body>
 
-<header>
-  <h2>Maharashtra eBird Explorer</h2>
-</header>
+<div id="topbar">
 
-<div class="controls">
+  <button onclick="showView('map')">Map</button>
+  <button onclick="showView('about')">About</button>
 
-<button class="green active" id="btnMonthly" onclick="setMode('monthly')">Monthly</button>
-<button class="green" id="btnSeasonal" onclick="setMode('seasonal_new')">Seasonal</button>
-<button class="gray" id="btnOld" onclick="setMode('seasonal_old')">Old (Season)</button>
+  <button id="toggleModeBtn" onclick="toggleMode()">
+    See New Seasonal
+  </button>
 
-<select id="year">
-  <option>2025</option>
-  <option>2026</option>
-</select>
+  <button id="oldVersionBtn" onclick="loadOldSeasonal()">
+    Old Version
+  </button>
 
-<select id="month">
-  <option>January</option>
-  <option>February</option>
-  <option>March</option>
-  <option>April</option>
-  <option>May</option>
-  <option>June</option>
-  <option>July</option>
-  <option>August</option>
-  <option>September</option>
-  <option>October</option>
-  <option>November</option>
-  <option>December</option>
-</select>
+  <!-- New Seasonal Controls -->
+  <select id="NewSeasonSelection" style="display:none;">
+    <option value="Summer">Summer</option>
+    <option value="Monsoon">Monsoon</option>
+    <option value="Winter">Winter</option>
+  </select>
 
-<select id="season" disabled>
-  <option>Winter</option>
-  <option>Summer</option>
-  <option>Monsoon</option>
-</select>
+  <select id="NewSeasonYearSelection" style="display:none;">
+    <option>2025</option>
+    <option>2026</option>
+  </select>
 
-<button onclick="loadMap()">Load</button>
+  <!-- Monthly Controls -->
+  <select id="MonthSelection">
+    <option>January</option>
+    <option>February</option>
+    <option>March</option>
+    <option>April</option>
+    <option>May</option>
+    <option>June</option>
+    <option>July</option>
+    <option>August</option>
+    <option>September</option>
+    <option>October</option>
+    <option>November</option>
+    <option>December</option>
+  </select>
 
+  <select id="MonthlyYearSelection">
+    <option>2025</option>
+    <option>2026</option>
+  </select>
+
+  <input type="text" id="globalSearch"
+         placeholder="Search species...">
 </div>
 
-<iframe id="mapFrame"></iframe>
+<div id="mapView" class="view active">
+  <div id="mapContainer">
+    <iframe id="mapFrame"></iframe>
+  </div>
+  <div id="summaryPanel">
+    <iframe id="summaryFrame"></iframe>
+  </div>
+</div>
+
+<div id="aboutView" class="view">
+  <h1 style="padding:40px;">About this project</h1>
+</div>
 
 <script>
 
-let currentMode = "monthly";
+let mode = "monthly";
 
-function setMode(mode) {
-  currentMode = mode;
+/* ---------- Update Frames ---------- */
+function updateFrames() {
 
-  document.getElementById("btnMonthly").classList.remove("active");
-  document.getElementById("btnSeasonal").classList.remove("active");
-  document.getElementById("btnOld").classList.remove("active");
+  fadeFrames(() => {
+
+    if (mode === "monthly") {
+
+      const month = document.getElementById("MonthSelection").value;
+      const year = document.getElementById("MonthlyYearSelection").value;
+
+      document.getElementById("mapFrame").src =
+        `months/${month}_${year}.html`;
+
+      document.getElementById("summaryFrame").src =
+        `month summary/${month}_${year}.html`;
+
+    } else if (mode === "newseason") {
+
+      const season = document.getElementById("NewSeasonSelection").value;
+      const year = document.getElementById("NewSeasonYearSelection").value;
+
+      document.getElementById("mapFrame").src =
+        `new seasons/${season} ${year}.html`;
+
+      document.getElementById("summaryFrame").src =
+        `new season summary/${season} ${year}.html`;
+    }
+
+  });
+}
+
+/* ---------- Toggle Monthly ↔ New Seasonal ---------- */
+function toggleMode() {
 
   if (mode === "monthly") {
-    document.getElementById("btnMonthly").classList.add("active");
-    document.getElementById("month").disabled = false;
-    document.getElementById("season").disabled = true;
-  }
 
-  if (mode === "seasonal_new") {
-    document.getElementById("btnSeasonal").classList.add("active");
-    document.getElementById("month").disabled = true;
-    document.getElementById("season").disabled = false;
-  }
+    mode = "newseason";
 
-  if (mode === "seasonal_old") {
-    document.getElementById("btnOld").classList.add("active");
-    document.getElementById("month").disabled = true;
-    document.getElementById("season").disabled = false;
-  }
+    document.getElementById("MonthSelection").style.display = "none";
+    document.getElementById("MonthlyYearSelection").style.display = "none";
 
-  updateAvailability();
-}
+    document.getElementById("NewSeasonSelection").style.display = "inline";
+    document.getElementById("NewSeasonYearSelection").style.display = "inline";
 
-
-function loadMap() {
-
-  let year = document.getElementById("year").value;
-  let month = document.getElementById("month").value;
-  let season = document.getElementById("season").value;
-
-  let mapPath = "";
-
-  if (currentMode === "monthly") {
-    mapPath = "months/" + month + "_" + year + ".html";
-  }
-
-  if (currentMode === "seasonal_new") {
-    mapPath = "new seasons/" + season + " " + year + ".html";
-  }
-
-  if (currentMode === "seasonal_old") {
-    mapPath = "seasons/" + season + " " + year + ".html";
-  }
-
-  document.getElementById("mapFrame").src = mapPath;
-}
-
-
-function fileExists(url, callback) {
-  fetch(url, { method: "HEAD" })
-    .then(response => callback(response.ok))
-    .catch(() => callback(false));
-}
-
-
-function updateAvailability() {
-
-  let yearSelect = document.getElementById("year");
-  let monthSelect = document.getElementById("month");
-  let seasonSelect = document.getElementById("season");
-
-  let selectedYear = yearSelect.value;
-
-  if (currentMode === "monthly") {
-
-    Array.from(monthSelect.options).forEach(option => {
-
-      let path = "months/" + option.value + "_" + selectedYear + ".html";
-
-      fileExists(path, function(exists) {
-        option.disabled = !exists;
-      });
-
-    });
+    document.getElementById("toggleModeBtn").textContent = "See Monthly";
 
   } else {
 
-    Array.from(seasonSelect.options).forEach(option => {
+    mode = "monthly";
 
-      let baseFolder = currentMode === "seasonal_new"
-        ? "new seasons/"
-        : "seasons/";
+    document.getElementById("MonthSelection").style.display = "inline";
+    document.getElementById("MonthlyYearSelection").style.display = "inline";
 
-      let path = baseFolder + option.value + " " + selectedYear + ".html";
+    document.getElementById("NewSeasonSelection").style.display = "none";
+    document.getElementById("NewSeasonYearSelection").style.display = "none";
 
-      fileExists(path, function(exists) {
-        option.disabled = !exists;
-      });
-
-    });
+    document.getElementById("toggleModeBtn").textContent = "See New Seasonal";
   }
+
+  updateFrames();
 }
 
+/* ---------- Load OLD Seasonal Version ---------- */
+function loadOldSeasonal() {
 
-// Update when year changes
-document.getElementById("year").addEventListener("change", updateAvailability);
+  const season = "Monsoon";  // default old season
+  const year = "2025";
 
-// Initial load
-updateAvailability();
+  document.getElementById("mapFrame").src =
+    `seasons/${season} ${year}.html`;
+
+  document.getElementById("summaryFrame").src =
+    `season summary/${season} ${year}.html`;
+}
+
+/* ---------- Fade Helper ---------- */
+function fadeFrames(callback) {
+  const mapFrame = document.getElementById("mapFrame");
+  const summaryFrame = document.getElementById("summaryFrame");
+
+  mapFrame.classList.add("fade-out");
+  summaryFrame.classList.add("fade-out");
+
+  setTimeout(() => {
+    callback();
+    mapFrame.classList.remove("fade-out");
+    summaryFrame.classList.remove("fade-out");
+  }, 250);
+}
+
+/* ---------- View Switch ---------- */
+function showView(view) {
+  document.getElementById("mapView")
+    .classList.toggle("active", view === "map");
+  document.getElementById("aboutView")
+    .classList.toggle("active", view === "about");
+}
+
+/* ---------- Initialize ---------- */
+window.onload = function() {
+
+  const now = new Date();
+  const monthNames = [
+    "January","February","March","April","May","June",
+    "July","August","September","October","November","December"
+  ];
+
+  document.getElementById("MonthSelection")
+    .value = monthNames[now.getMonth()];
+
+  document.getElementById("MonthlyYearSelection")
+    .value = now.getFullYear();
+
+  updateFrames();
+};
 
 </script>
-
 </body>
 </html>
