@@ -1,41 +1,72 @@
 import requests
-from datetime import datetime
 import pandas as pd
-import os
+import calendar
+from datetime import datetime
 from pathlib import Path
+import os
+import time
 
-API_KEY = os.getenv("EBIRD_API_KEY")
+
+EBIRD_API_KEY = os.getenv("EBIRD_API_KEY")
 REGION_CODE = "IN-MH"
-BACK_DAYS = 30
 BASE_URL = "https://api.ebird.org/v2/data/obs"
 
-today = datetime.today()
-month_year = today.strftime("%B_%Y")
 
-url = f"{BASE_URL}/{REGION_CODE}/recent"
-params = {"back": BACK_DAYS}
-headers = {"X-eBirdApiToken": API_KEY}
+def fetch_full_month(year, month):
 
-response = requests.get(url, headers=headers, params=params)
+    if not EBIRD_API_KEY:
+        raise ValueError("EBIRD_API_KEY not set")
 
-if response.status_code != 200:
-    raise Exception(response.text)
+    month_name = calendar.month_name[month]
+    start_date = datetime(year, month, 1)
+    end_day = calendar.monthrange(year, month)[1]
 
-data = response.json()
-df = pd.DataFrame(data)
+    all_records = []
 
-df = df.rename(columns={
-    "comName": "commonName",
-    "sciName": "scientificName",
-    "obsDt": "observationDate",
-    "howMany": "observationCount",
-    "lat": "latitude",
-    "lng": "longitude"
-})
+    for day in range(1, end_day + 1):
 
-output_folder = Path(f"months/{month_year}")
-output_folder.mkdir(parents=True, exist_ok=True)
+        date_str = f"{year}/{month:02d}/{day:02d}"
+        url = f"{BASE_URL}/{REGION_CODE}/historic/{date_str}"
 
-df.to_csv(output_folder / f"{month_year}.csv", index=False)
+        headers = {"X-eBirdApiToken": EBIRD_API_KEY}
 
-print(f"Saved {month_year}")
+        response = requests.get(url, headers=headers)
+
+        if response.status_code != 200:
+            print(f"Skipped {date_str}")
+            continue
+
+        daily_data = response.json()
+        all_records.extend(daily_data)
+
+        print(f"{date_str} → {len(daily_data)} records")
+
+        time.sleep(0.4)
+
+    if not all_records:
+        print("No data found.")
+        return
+
+    df = pd.DataFrame(all_records)
+
+    df = df.rename(columns={
+        "comName": "commonName",
+        "sciName": "scientificName",
+        "obsDt": "observationDate",
+        "howMany": "observationCount",
+        "lat": "latitude",
+        "lng": "longitude"
+    })
+
+    output_dir = Path("months")
+    output_dir.mkdir(exist_ok=True)
+
+    output_path = output_dir / f"{month_name}_{year}.csv"
+    df.to_csv(output_path, index=False)
+
+    print(f"Saved: {output_path}")
+
+
+if __name__ == "__main__":
+    today = datetime.today()
+    fetch_full_month(today.year, today.month)
