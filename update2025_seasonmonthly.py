@@ -23,11 +23,19 @@ import calendar
 from pathlib import Path
 import pandas as pd
 
-from fetch_data_initial import fetch_month_data
+from fetch_data_initial import fetch_month
 from generate_map import generate_map
 from generate_summary import generate_summary
 from generate_summary_seasonal import generate_seasonal_summary
 
+
+# ===============================
+# CONFIG
+# ===============================
+
+LAT = 19.5
+LNG = 75.3
+RADIUS_KM = 100
 
 #MONTHS_2025 = list(range(1, 13))
 MONTHS_2026 = [1]
@@ -53,10 +61,22 @@ def run_monthly():
 
             print(f"\nProcessing {time_period}")
 
-            # 1️⃣ Fetch CSV
-            fetch_month_data(year, month)
+            # 1️⃣ Fetch CSV (CORRECT CALL)
+            fetch_month(
+                lat=LAT,
+                lng=LNG,
+                radius_km=RADIUS_KM,
+                month=month,
+                year=year
+            )
 
-            csv_path = Path(f"months/{time_period}.csv")
+            csv_path = Path(f"months/{year}_{month}.csv")
+
+            # Rename to Month_Year format for rest of pipeline
+            if csv_path.exists():
+                renamed_path = Path(f"months/{time_period}.csv")
+                csv_path.rename(renamed_path)
+                csv_path = renamed_path
 
             # 2️⃣ VERIFY FILE EXISTS BEFORE CONTINUING
             if not csv_path.exists():
@@ -117,7 +137,7 @@ def build_seasonal():
             seasonal_data[key].append(df)
 
     # Save seasonal CSVs
-    out_dir = Path("seasons")
+    out_dir = Path("new seasons")
     out_dir.mkdir(exist_ok=True)
 
     for key, dfs in seasonal_data.items():
@@ -141,7 +161,7 @@ def build_seasonal():
 
 def run_seasonal_outputs():
 
-    season_dir = Path("seasons")
+    season_dir = Path("new seasons")
 
     for file in season_dir.glob("*.csv"):
 
