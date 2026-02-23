@@ -145,16 +145,7 @@ function onEachGrid(feature, layer) {{
     "Observations: " + (p.observations || 0) + "<br><br>" +
 
     "<b>Top species:</b><br>" +
-    (p.top_species || []).join("<br>") + "<br><br>" +
-
-    "<b>Habitat specializations:</b><br>" +
-    (p.habitat || []).join(", ") + "<br><br>" +
-
-    "<b>Migratory patterns:</b><br>" +
-    (p.migratory || []).join(", ") + "<br><br>" +
-
-    "<b>Common behaviours:</b><br>" +
-    (p.behaviour || []).join(", ");
+    (p.top_species || []).join("<br>") + "<br><br>";
 
   layer.bindPopup(content);
 }}
