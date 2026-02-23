@@ -1,3 +1,5 @@
+# EXECUTED MONTHLy
+
 import requests
 import pandas as pd
 import calendar
@@ -18,7 +20,6 @@ def fetch_full_month(year, month):
         raise ValueError("EBIRD_API_KEY not set")
 
     month_name = calendar.month_name[month]
-    start_date = datetime(year, month, 1)
     end_day = calendar.monthrange(year, month)[1]
 
     all_records = []
@@ -26,22 +27,34 @@ def fetch_full_month(year, month):
     for day in range(1, end_day + 1):
 
         date_str = f"{year}/{month:02d}/{day:02d}"
-        url = f"{BASE_URL}/{REGION_CODE}/historic/{date_str}"
+        url = f"{BASE_URL}/{REGION_CODE}/historic/{date_str}?detail=full"
 
         headers = {"X-eBirdApiToken": EBIRD_API_KEY}
 
-        response = requests.get(url, headers=headers)
+        retry_count = 0
+        max_retries = 5
 
-        if response.status_code != 200:
-            print(f"Skipped {date_str}")
-            continue
+        while retry_count < max_retries:
 
-        daily_data = response.json()
-        all_records.extend(daily_data)
+            response = requests.get(url, headers=headers)
 
-        print(f"{date_str} → {len(daily_data)} records")
+            if response.status_code == 200:
+                daily_data = response.json()
+                all_records.extend(daily_data)
+                print(f"{date_str} → {len(daily_data)} records")
+                break
 
-        time.sleep(0.4)
+            elif response.status_code == 429:
+                wait_time = 2 ** retry_count
+                print(f"Rate limit hit ({date_str}). Waiting {wait_time}s...")
+                time.sleep(wait_time)
+                retry_count += 1
+
+            else:
+                print(f"Failed {date_str} → {response.status_code}")
+                break
+
+        time.sleep(0.3)
 
     if not all_records:
         print("No data found.")
@@ -55,7 +68,9 @@ def fetch_full_month(year, month):
         "obsDt": "observationDate",
         "howMany": "observationCount",
         "lat": "latitude",
-        "lng": "longitude"
+        "lng": "longitude",
+        "obsType": "observationType",
+        "protocolName": "protocolName"
     })
 
     output_dir = Path("months")
@@ -64,7 +79,7 @@ def fetch_full_month(year, month):
     output_path = output_dir / f"{month_name}_{year}.csv"
     df.to_csv(output_path, index=False)
 
-    print(f"Saved: {output_path}")
+    print(f"✓ Saved: {output_path}")
 
 
 if __name__ == "__main__":
