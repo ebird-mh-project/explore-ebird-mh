@@ -1,165 +1,68 @@
-import calendar
-from pathlib import Path
+import requests
 import pandas as pd
+import time
+from pathlib import Path
 
-from fetch_data_initial import fetch_month
-from generate_map import generate_map
-from generate_summary import generate_summary
-from generate_summary_seasonal import generate_seasonal_summary
+API_KEY = "YOUR_API_KEY"
+BASE_URL = "https://api.ebird.org/v2/data/obs/geo/recent"
 
-
-# ===============================
-# CONFIG
-# ===============================
-
-LAT = 19.5
-LNG = 75.3
-RADIUS_KM = 100
-
-#MONTHS_2025 = list(range(1, 13))
-MONTHS_2026 = [1]
-
-YEAR_MONTHS = {
-    #2025: MONTHS_2025,
-    2026: MONTHS_2026
+HEADERS = {
+    "X-eBirdApiToken": API_KEY
 }
 
-
-# ===============================
-# MONTHLY FETCH + GENERATE
-# ===============================
-
-def run_monthly():
-
-    for year, months in YEAR_MONTHS.items():
-
-        for month in months:
-
-            month_name = calendar.month_name[month]
-            time_period = f"{month_name}_{year}"
-
-            print(f"\nProcessing {time_period}")
-
-            # 1️⃣ Fetch CSV (CORRECT CALL)
-            fetch_month(
-                lat=LAT,
-                lng=LNG,
-                radius_km=RADIUS_KM,
-                month=month,
-                year=year
-            )
-
-            csv_path = Path(f"months/{year}_{month}.csv")
-
-            # Rename to Month_Year format for rest of pipeline
-            if csv_path.exists():
-                renamed_path = Path(f"months/{time_period}.csv")
-                csv_path.rename(renamed_path)
-                csv_path = renamed_path
-
-            # 2️⃣ VERIFY FILE EXISTS BEFORE CONTINUING
-            if not csv_path.exists():
-                print(f"⚠ CSV not created for {time_period}. Skipping.")
-                continue
-
-            print(f"✓ CSV confirmed: {csv_path}")
-
-            # 3️⃣ Generate monthly map
-            generate_map(time_period, mode="monthly")
-
-            # 4️⃣ Generate monthly summary
-            generate_summary(time_period)
+OUTPUT_DIR = Path("months")
+OUTPUT_DIR.mkdir(exist_ok=True)
 
 
-# ===============================
-# BUILD SEASONAL DATA
-# ===============================
+def make_request(url, params, retries=5):
+    for attempt in range(retries):
+        response = requests.get(url, headers=HEADERS, params=params)
 
-def season_from_month(month):
-    if month in [3, 4, 5]:
-        return "Summer"
-    elif month in [6, 7, 8, 9]:
-        return "Monsoon"
-    else:
-        return "Winter"
+        if response.status_code == 200:
+            return response.json()
 
-
-def build_seasonal():
-
-    seasonal_data = {}
-
-    for year, months in YEAR_MONTHS.items():
-
-        for month in months:
-
-            month_name = calendar.month_name[month]
-            season = season_from_month(month)
-
-            # Handle Jan/Feb winter belonging to previous year
-            if season == "Winter" and month in [1, 2]:
-                season_year = year - 1
-            else:
-                season_year = year
-
-            key = f"{season} {season_year}"
-
-            csv_path = Path(f"months/{month_name}_{year}.csv")
-
-            if not csv_path.exists():
-                continue
-
-            df = pd.read_csv(csv_path)
-
-            if key not in seasonal_data:
-                seasonal_data[key] = []
-
-            seasonal_data[key].append(df)
-
-    # Save seasonal CSVs
-    out_dir = Path("new seasons")
-    out_dir.mkdir(exist_ok=True)
-
-    for key, dfs in seasonal_data.items():
-
-        season_csv_path = out_dir / f"{key}.csv"
-
-        # Skip if already exists
-        if season_csv_path.exists():
-            print(f"✓ {key} already built. Skipping.")
+        # Rate limit handling
+        if response.status_code == 429:
+            wait_time = int(response.headers.get("Retry-After", 60))
+            print(f"Rate limit hit. Waiting {wait_time} seconds...")
+            time.sleep(wait_time)
             continue
 
-        season_df = pd.concat(dfs, ignore_index=True)
-        season_df.to_csv(season_csv_path, index=False)
+        print(f"Error {response.status_code}: {response.text}")
+        time.sleep(5)
 
-        print(f"✓ Season built: {key}")
-
-
-# ===============================
-# GENERATE SEASONAL MAP + SUMMARY
-# ===============================
-
-def run_seasonal_outputs():
-
-    season_dir = Path("new seasons")
-
-    for file in season_dir.glob("*.csv"):
-
-        season_name = file.stem  # e.g. "Monsoon 2025"
-
-        print(f"Generating seasonal outputs for {season_name}")
-
-        generate_map(season_name, mode="seasonal")
-        generate_seasonal_summary(season_name)
+    raise Exception("Max retries exceeded.")
 
 
-# ===============================
-# MAIN
-# ===============================
+def fetch_month(lat, lng, radius_km, month, year):
+    params = {
+        "lat": lat,
+        "lng": lng,
+        "dist": radius_km,
+        "back": 30,
+        "fmt": "json"
+    }
+
+    data = make_request(BASE_URL, params)
+
+    if not data:
+        print(f"No data for {month}-{year}")
+        return
+
+    df = pd.DataFrame(data)
+    df["month"] = month
+    df["year"] = year
+
+    output_file = OUTPUT_DIR / f"{year}_{month}.csv"
+    df.to_csv(output_file, index=False)
+    print(f"Saved {output_file}")
+
 
 if __name__ == "__main__":
-
-    run_monthly()
-    build_seasonal()
-    run_seasonal_outputs()
-
-    print("=== BOOTSTRAP COMPLETE ===")
+    fetch_month(
+        lat=19.5,
+        lng=75.3,
+        radius_km=100,
+        month=1,
+        year=2025
+    )
