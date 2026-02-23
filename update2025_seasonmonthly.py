@@ -117,7 +117,7 @@ def build_seasonal():
             seasonal_data[key].append(df)
 
     # Save seasonal CSVs
-    out_dir = Path("seasons")
+    out_dir = Path("new seasons")
     out_dir.mkdir(exist_ok=True)
 
     for key, dfs in seasonal_data.items():
