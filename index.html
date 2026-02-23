@@ -180,38 +180,46 @@ a {
   <h2>About this dashboard</h2>
   <p>
     This is a dashboard of eBird data for Maharashtra. The original version
-    (divided into seasons) was analysed first.
+    (divided into seasons) was analysed first. Then the automated (monthly & seasonal)
+    workflow was devised based on that. Data for all of 2025 & January 2026 were generated 
+    initially, and after this, the dashboard will be updated every month. 
   </p>
-
   <p>
-    You'll notice that the Monthly (automated) and Seasonal (automated) views
-    have more sparse analysis, and that's because they only really exist
-    because I wanted to delve into CI/CD with GitHub Actions & YAML workflows,
-    so I was focused on learning THAT and encountered some difficulty in
-    automating some parts of my original process. For example, Habitat specializations, 
-    Migratory patterns, and Common behaviours were taken from stateofindiasbirds.in/. I could've
-    done some stuff with the Python scripts to repeat the process of adding that data to the monthly
-    data, but frankly I got tired and wanted to just move onto the CI/CD stuff and focus on learning how
-    the API call works and to future projects.
+    I will be using the knowledge gained through this project to create a
+    dashboard to present the results of an SDM, and also utilizing it in 
+    some other projects with spatial dashboards. This about page will be
+    updated accordingly, to link to those projects.
   </p>
   <p>
     I may improve this dashboard, but it was mostly a prototype so I could
     figure out a template for displaying a map and some extra data on the side,
-    and also so I could learn CI/CD stuff (intention to use it in future projects).
-    Again, I wanted to move on.
+    and also so I could learn CI/CD stuff, and get a grasp of Leaflet and JavaScript+CSS in general,
+    etc etc. JavaScript & CSS can be very versatile and that's why I elected to use it. One of my inspirations
+    for this was, strangely enough, a browser game called corru.observer. The creator didn't use WebGL for graphics, 
+    just CSS, and it runs quite nicely on the browser, utilizing the format of a web page in an interesting way to
+    convey information. Why would a game be inspiration for data analytics? Because both things involve storytelling,
+    and storytelling involves conveying information, and I got some ideas from the way corru.observer conveys information
+    and the fact that it's doing <i>so much</i> while still running pretty smoothly (which is important; I want the dashboards
+    to be accessible regardless of the quality of your device or network WHILE ALSO making them interesting/dynamic/interactive!).
+    Also, games are a medium BUILT on interactivity, and I would like to make cool interactive dashboards, which allow you to 
+    REALLY get an intuitive grasp of the data. This dashboard isn't even halfway to what I'm imagining, partly due to its simplicity (which
+    IS a strength but again, not what I'm imagining), but I'll figure it out as I go along! 
   </p>
   <p>
-    Did the entirety of the original analysis by myself, used ChatGPT to do
+    AI disclosure: I did the entirety of the original analysis by myself, and used ChatGPT for
     some parts of the automation process (along with cleaning up my newbie
-    attempts at the webdev stuff).
+    attempts at webdev).
   </p>
-
   <p>
-    I will be using the knowledge gained in making this to create an SDM
-    dashboard later, where the right-side window will have a NICE looking
-    dashboard. Once I've deployed it, a link will be available here.
+    Also: You'll notice that the Monthly (automated) and Seasonal (automated) views
+    have more sparse analysis, and that's because their main purpose was
+    to delve into CI/CD with GitHub Actions & YAML workflows,
+    so I was focused on learning THAT and encountered some difficulty in
+    automating some parts of my original process. For example, Habitat specializations, 
+    Migratory patterns, and Common behaviours were taken from stateofindiasbirds.in/. I could've
+    done some stuff with the Python scripts to repeat the process of adding that data to the monthly
+    data, but frankly I got tired and wanted to just move onto the new skill stuff. 
   </p>
-
   <p>
     <a href="https://github.com/ebird-mh-project/explore-ebird-mh/tree/main" target="_blank">
       Find the repo here
@@ -224,8 +232,7 @@ a {
     <a href="https://www.linkedin.com/in/chandra-thakur-5b0a9534a/" target="_blank">
       Find my LinkedIn here
     </a><br><br>
-
-    Personal website will be created & added here later.
+    Personal website will be created & added here later (will include links to all my data projects)
   </p>
 
 </div>
@@ -307,4 +314,5 @@ SeasonYearSelection.addEventListener("change", updateFrames);
 </script>
 </body>
 </html>
+
 
