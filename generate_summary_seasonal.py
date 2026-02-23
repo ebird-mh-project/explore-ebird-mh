@@ -46,7 +46,7 @@ img {{max-width:200px; border-radius:8px; margin-top:10px;}}
 
 <div class="card">
 <b>Total Observations:</b> {total_observations}<br>
-<b>Species Richness:</b> {species_richness}
+<b>Total Species:</b> {species_richness}
 </div>
 
 <div class="card"><b>Top 3 Species</b><br>
