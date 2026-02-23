@@ -61,14 +61,8 @@ def run_monthly():
 
             print(f"\nProcessing {time_period}")
 
-            # 1️⃣ Fetch CSV (CORRECT CALL)
-            fetch_month_data(
-                lat=LAT,
-                lng=LNG,
-                radius_km=RADIUS_KM,
-                month=month,
-                year=year
-            )
+            # 1️⃣ Fetch CSV
+            fetch_month_data(year=year, month=month)
 
             csv_path = Path(f"months/{year}_{month}.csv")
 
