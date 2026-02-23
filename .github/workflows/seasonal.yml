@@ -1,4 +1,4 @@
-name: eBird Automation
+name: Seasonal data aggregation
 
 on:
   schedule:
