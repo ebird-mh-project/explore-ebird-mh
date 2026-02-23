@@ -1,68 +1,87 @@
 import requests
 import pandas as pd
-import time
 from pathlib import Path
-
-API_KEY = "YOUR_API_KEY"
-BASE_URL = "https://api.ebird.org/v2/data/obs/geo/recent"
-
-HEADERS = {
-    "X-eBirdApiToken": API_KEY
-}
-
-OUTPUT_DIR = Path("months")
-OUTPUT_DIR.mkdir(exist_ok=True)
+from datetime import datetime
+import calendar
+import time
+import os
 
 
-def make_request(url, params, retries=5):
-    for attempt in range(retries):
-        response = requests.get(url, headers=HEADERS, params=params)
+# ---------------------------------------
+# CONFIG
+# ---------------------------------------
 
-        if response.status_code == 200:
-            return response.json()
+EBIRD_API_KEY = os.getenv("EBIRD_API_KEY")
 
-        # Rate limit handling
-        if response.status_code == 429:
-            wait_time = int(response.headers.get("Retry-After", 60))
-            print(f"Rate limit hit. Waiting {wait_time} seconds...")
-            time.sleep(wait_time)
+BASE_URL = "https://api.ebird.org/v2/data/obs/IN-MH/historic"
+
+
+# ---------------------------------------
+# FETCH FUNCTION
+# ---------------------------------------
+
+def fetch_month_data(year, month):
+
+    if not EBIRD_API_KEY:
+        raise ValueError("EBIRD_API_KEY not set as environment variable")
+
+    start_date = datetime(year, month, 1)
+    end_day = calendar.monthrange(year, month)[1]
+    end_date = datetime(year, month, end_day)
+
+    print(f"Fetching data from {start_date.date()} to {end_date.date()}")
+
+    all_records = []
+
+    current_date = start_date
+
+    while current_date <= end_date:
+
+        date_str = current_date.strftime("%Y/%m/%d")
+
+        url = f"{BASE_URL}/{date_str}"
+
+        headers = {
+            "X-eBirdApiToken": EBIRD_API_KEY
+        }
+
+        response = requests.get(url, headers=headers)
+
+        if response.status_code != 200:
+            print(f"Failed on {date_str}")
+            current_date += pd.Timedelta(days=1)
             continue
 
-        print(f"Error {response.status_code}: {response.text}")
-        time.sleep(5)
+        daily_data = response.json()
 
-    raise Exception("Max retries exceeded.")
+        all_records.extend(daily_data)
 
+        print(f"{date_str} → {len(daily_data)} records", flush=True)
 
-def fetch_month(lat, lng, radius_km, month, year):
-    params = {
-        "lat": lat,
-        "lng": lng,
-        "dist": radius_km,
-        "back": 30,
-        "fmt": "json"
-    }
+        time.sleep(0.4)  # Avoid rate limits
 
-    data = make_request(BASE_URL, params)
+        current_date += pd.Timedelta(days=1)
 
-    if not data:
-        print(f"No data for {month}-{year}")
+    if not all_records:
+        print("No records found for month.")
         return
 
-    df = pd.DataFrame(data)
-    df["month"] = month
-    df["year"] = year
+    df = pd.DataFrame(all_records)
+    df = df.rename(columns={
+    "comName": "commonName",
+    "sciName": "scientificName",
+    "obsDt": "observationDate",
+    "howMany": "observationCount",
+    "lat": "latitude",
+    "lng": "longitude"})
 
-    output_file = OUTPUT_DIR / f"{year}_{month}.csv"
-    df.to_csv(output_file, index=False)
-    print(f"Saved {output_file}")
+    month_name = calendar.month_name[month]
 
+    output_dir = Path("months")
+    output_dir.mkdir(exist_ok=True)
 
-if __name__ == "__main__":
-    fetch_month(
-        lat=19.5,
-        lng=75.3,
-        radius_km=100,
-        month=1,
-        year=2025
-    )
+    output_path = output_dir / f"{month_name}_{year}.csv"
+
+    df.to_csv(output_path, index=False)
+
+    print(f"Saved: {output_path}")
