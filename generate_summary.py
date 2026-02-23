@@ -7,62 +7,35 @@ def generate_summary(month_year):
     csv_path = Path(f"months/{month_year}.csv")
 
     if not csv_path.exists():
-        print(f"⚠ Monthly CSV not found for {month_year}. Skipping summary.")
+        print("CSV not found")
         return
 
     df = pd.read_csv(csv_path)
 
-    # Standardize column names in case of raw API format
-    df = df.rename(columns={
-        "comName": "commonName",
-        "sciName": "scientificName",
-        "obsDt": "observationDate",
-        "howMany": "observationCount",
-        "lat": "latitude",
-        "lng": "longitude"
-    })
-
-    if df.empty:
-        print(f"⚠ {month_year} CSV empty. Skipping summary.")
-        return
-
     total_observations = len(df)
+    species_richness = df["scientificName"].nunique()
 
-    species_richness = (
-        df["scientificName"].nunique()
-        if "scientificName" in df.columns
-        else 0
-    )
+    def top3(col):
+        if col not in df.columns:
+            return pd.DataFrame(columns=["Name", "Count"])
+        t = df[col].dropna().value_counts().head(3).reset_index()
+        t.columns = ["Name", "Count"]
+        return t
 
-    if "commonName" in df.columns:
-        top_species = (
-            df["commonName"]
-            .dropna()
-            .value_counts()
-            .head(3)
-            .reset_index()
-        )
-        top_species.columns = ["Species", "Observations"]
-    else:
-        top_species = pd.DataFrame(columns=["Species", "Observations"])
+    top_species = top3("commonName")
+    top_protocols = top3("protocolName")
+    top_obs_types = top3("observationType")
 
-    html_content = f"""
+    html = f"""
 <!DOCTYPE html>
 <html>
 <head>
 <meta charset="utf-8"/>
 <title>{month_year} Summary</title>
 <style>
-body {{
-    font-family: Arial;
-    padding: 30px;
-}}
-.card {{
-    background:#f2f2f2;
-    padding:15px;
-    border-radius:8px;
-    margin-bottom:20px;
-}}
+body {{font-family:Arial; padding:30px;}}
+.card {{background:#f2f2f2; padding:20px; border-radius:10px; margin-bottom:20px;}}
+img {{max-width:200px; border-radius:8px; margin-top:10px;}}
 </style>
 </head>
 <body>
@@ -70,35 +43,49 @@ body {{
 <h1>{month_year} Summary</h1>
 
 <div class="card">
-<b>Total Observations:</b> {total_observations}
-</div>
-
-<div class="card">
+<b>Total Observations:</b> {total_observations}<br>
 <b>Species Richness:</b> {species_richness}
 </div>
 
-<div class="card">
-<b>Top 3 Species:</b>
-<ul>
+<div class="card"><b>Top 3 Species</b><br>
 """
+
+    assets_path = Path("assets")
 
     for _, row in top_species.iterrows():
-        html_content += f"<li>{row['Species']} ({row['Observations']})</li>"
+        species = row["Name"]
+        count = row["Count"]
+        img_tag = ""
 
-    html_content += """
-</ul>
-</div>
+        found = False
+        for ext in ["jpg", "png", "jpeg"]:
+            if (assets_path / f"{species}.{ext}").exists():
+                img_tag = f'<img src="../assets/{species}.{ext}">'
+                found = True
+                break
 
-</body>
-</html>
-"""
+        if not found:
+            img_tag = f"<p><i>img not found: {species}</i></p>"
 
-    output_folder = Path("month summary")
-    output_folder.mkdir(exist_ok=True)
+        html += f"<b>{species}</b> ({count})<br>{img_tag}<br><br>"
 
-    output_path = output_folder / f"{month_year}.html"
+    html += "</div>"
 
-    with open(output_path, "w", encoding="utf-8") as f:
-        f.write(html_content)
+    def add_section(title, df_section):
+        section = f'<div class="card"><b>{title}</b><br>'
+        for _, row in df_section.iterrows():
+            section += f"{row['Name']} ({row['Count']})<br>"
+        section += "</div>"
+        return section
 
-    print(f"✓ Summary generated: {month_year}")
+    html += add_section("Top 3 Protocol Types", top_protocols)
+    html += add_section("Top 3 Observation Types", top_obs_types)
+
+    html += "</body></html>"
+
+    out = Path("month summary")
+    out.mkdir(exist_ok=True)
+    with open(out / f"{month_year}.html", "w", encoding="utf-8") as f:
+        f.write(html)
+
+    print(f"✓ Summary generated {month_year}")
