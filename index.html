@@ -250,8 +250,8 @@ function updateFrames() {
   }
 
   else if (mode === "newseason") {
-    mapFrame.src = `new seasons/${SeasonSelection.value} ${SeasonYearSelection.value}.html`;
-    summaryFrame.src = `new season summary/${SeasonSelection.value} ${SeasonYearSelection.value}.html`;
+    mapFrame.src = `new seasons/${SeasonSelection.value}_${SeasonYearSelection.value}.html`;
+    summaryFrame.src = `new season summary/${SeasonSelection.value}_${SeasonYearSelection.value}.html`;
   }
 
   else if (mode === "old") {
@@ -314,5 +314,6 @@ SeasonYearSelection.addEventListener("change", updateFrames);
 </script>
 </body>
 </html>
+
 
 
