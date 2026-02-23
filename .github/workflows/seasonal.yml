@@ -28,13 +28,9 @@ jobs:
       - name: Build seasonal data
         run: |
           python seasons_data.py
-        env:
-            EBIRD_API_KEY: ${{ secrets.EBIRD_API_KEY }}
       - name: Generate seasonal maps & summaries
         run: |
           python generate_summary_seasonal.py
-        env:
-            EBIRD_API_KEY: ${{ secrets.EBIRD_API_KEY }}
       - name: Commit results
         run: |
           git config --global user.name "github-actions"
