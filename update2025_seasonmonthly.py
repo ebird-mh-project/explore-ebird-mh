@@ -23,7 +23,7 @@ import calendar
 from pathlib import Path
 import pandas as pd
 
-from fetch_data_initial import fetch_month
+from fetch_data_initial import fetch_month_data
 from generate_map import generate_map
 from generate_summary import generate_summary
 from generate_summary_seasonal import generate_seasonal_summary
@@ -62,7 +62,7 @@ def run_monthly():
             print(f"\nProcessing {time_period}")
 
             # 1️⃣ Fetch CSV (CORRECT CALL)
-            fetch_month(
+            fetch_month_data(
                 lat=LAT,
                 lng=LNG,
                 radius_km=RADIUS_KM,
