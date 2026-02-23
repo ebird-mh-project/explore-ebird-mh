@@ -2,91 +2,73 @@
 
 import requests
 import pandas as pd
-import time
+import calendar
+from datetime import datetime
 from pathlib import Path
-
-API_KEY = "YOUR_API_KEY"
-BASE_URL = "https://api.ebird.org/v2/data/obs/geo/recent"
-
-HEADERS = {
-    "X-eBirdApiToken": API_KEY
-}
-
-MONTHS_DIR = Path("months")
-SEASONS_DIR = Path("new seasons")
-
-MONTHS_DIR.mkdir(exist_ok=True)
-SEASONS_DIR.mkdir(exist_ok=True)
+import os
+import time
 
 
-def make_request(url, params, retries=5):
-    for attempt in range(retries):
-        response = requests.get(url, headers=HEADERS, params=params)
+EBIRD_API_KEY = os.getenv("EBIRD_API_KEY")
+REGION_CODE = "IN-MH"
+BASE_URL = "https://api.ebird.org/v2/data/obs"
 
-        if response.status_code == 200:
-            return response.json()
 
-        if response.status_code == 429:
-            wait_time = int(response.headers.get("Retry-After", 60))
-            print(f"Rate limit hit. Waiting {wait_time} seconds...")
-            time.sleep(wait_time)
+def fetch_full_month(year, month):
+
+    if not EBIRD_API_KEY:
+        raise ValueError("EBIRD_API_KEY not set")
+
+    month_name = calendar.month_name[month]
+    start_date = datetime(year, month, 1)
+    end_day = calendar.monthrange(year, month)[1]
+
+    all_records = []
+
+    for day in range(1, end_day + 1):
+
+        date_str = f"{year}/{month:02d}/{day:02d}"
+        url = f"{BASE_URL}/{REGION_CODE}/historic/{date_str}"
+
+        headers = {"X-eBirdApiToken": EBIRD_API_KEY}
+
+        response = requests.get(url, headers=headers)
+
+        if response.status_code != 200:
+            print(f"Skipped {date_str}")
             continue
 
-        print(f"Error {response.status_code}: {response.text}")
-        time.sleep(5)
+        daily_data = response.json()
+        all_records.extend(daily_data)
 
-    raise Exception("Max retries exceeded.")
+        print(f"{date_str} → {len(daily_data)} records")
 
+        time.sleep(0.4)
 
-def fetch_month(lat, lng, radius_km, month, year):
-    params = {
-        "lat": lat,
-        "lng": lng,
-        "dist": radius_km,
-        "back": 30,
-        "fmt": "json"
-    }
+    if not all_records:
+        print("No data found.")
+        return
 
-    data = make_request(BASE_URL, params)
+    df = pd.DataFrame(all_records)
 
-    if not data:
-        print(f"No data for {month}-{year}")
-        return None
+    df = df.rename(columns={
+        "comName": "commonName",
+        "sciName": "scientificName",
+        "obsDt": "observationDate",
+        "howMany": "observationCount",
+        "lat": "latitude",
+        "lng": "longitude"
+    })
 
-    df = pd.DataFrame(data)
-    df["month"] = month
-    df["year"] = year
+    output_dir = Path("months")
+    output_dir.mkdir(exist_ok=True)
 
-    output_file = MONTHS_DIR / f"{year}_{month}.csv"
-    df.to_csv(output_file, index=False)
-    print(f"Saved {output_file}")
+    output_path = output_dir / f"{month_name}_{year}.csv"
+    df.to_csv(output_path, index=False)
 
-    return df
-
-
-def combine_season(season_name, months_list, year):
-    combined = []
-
-    for month in months_list:
-        file_path = MONTHS_DIR / f"{year}_{month}.csv"
-        if file_path.exists():
-            combined.append(pd.read_csv(file_path))
-
-    if combined:
-        season_df = pd.concat(combined, ignore_index=True)
-        output_file = SEASONS_DIR / f"{season_name}_{year}.csv"
-        season_df.to_csv(output_file, index=False)
-        print(f"Saved seasonal file {output_file}")
+    print(f"Saved: {output_path}")
 
 
 if __name__ == "__main__":
-
-    lat = 19.5
-    lng = 75.3
-    radius_km = 100
-    year = 2025
-
-    for month in [1, 2, 3]:
-        fetch_month(lat, lng, radius_km, month, year)
-
-    combine_season("winter", [1, 2, 3], year)
+    today = datetime.today()
+    fetch_full_month(today.year, today.month)
