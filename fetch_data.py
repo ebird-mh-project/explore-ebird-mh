@@ -1,87 +1,92 @@
-# EXECUTED MONTHLy
+# EXECUTED MONTHLY
 
 import requests
 import pandas as pd
-import calendar
-from datetime import datetime
-from pathlib import Path
-import os
 import time
+from pathlib import Path
+
+API_KEY = "YOUR_API_KEY"
+BASE_URL = "https://api.ebird.org/v2/data/obs/geo/recent"
+
+HEADERS = {
+    "X-eBirdApiToken": API_KEY
+}
+
+MONTHS_DIR = Path("months")
+SEASONS_DIR = Path("new seasons")
+
+MONTHS_DIR.mkdir(exist_ok=True)
+SEASONS_DIR.mkdir(exist_ok=True)
 
 
-EBIRD_API_KEY = os.getenv("EBIRD_API_KEY")
-REGION_CODE = "IN-MH"
-BASE_URL = "https://api.ebird.org/v2/data/obs"
+def make_request(url, params, retries=5):
+    for attempt in range(retries):
+        response = requests.get(url, headers=HEADERS, params=params)
+
+        if response.status_code == 200:
+            return response.json()
+
+        if response.status_code == 429:
+            wait_time = int(response.headers.get("Retry-After", 60))
+            print(f"Rate limit hit. Waiting {wait_time} seconds...")
+            time.sleep(wait_time)
+            continue
+
+        print(f"Error {response.status_code}: {response.text}")
+        time.sleep(5)
+
+    raise Exception("Max retries exceeded.")
 
 
-def fetch_full_month(year, month):
+def fetch_month(lat, lng, radius_km, month, year):
+    params = {
+        "lat": lat,
+        "lng": lng,
+        "dist": radius_km,
+        "back": 30,
+        "fmt": "json"
+    }
 
-    if not EBIRD_API_KEY:
-        raise ValueError("EBIRD_API_KEY not set")
+    data = make_request(BASE_URL, params)
 
-    month_name = calendar.month_name[month]
-    end_day = calendar.monthrange(year, month)[1]
+    if not data:
+        print(f"No data for {month}-{year}")
+        return None
 
-    all_records = []
+    df = pd.DataFrame(data)
+    df["month"] = month
+    df["year"] = year
 
-    for day in range(1, end_day + 1):
+    output_file = MONTHS_DIR / f"{year}_{month}.csv"
+    df.to_csv(output_file, index=False)
+    print(f"Saved {output_file}")
 
-        date_str = f"{year}/{month:02d}/{day:02d}"
-        url = f"{BASE_URL}/{REGION_CODE}/historic/{date_str}?detail=full"
+    return df
 
-        headers = {"X-eBirdApiToken": EBIRD_API_KEY}
 
-        retry_count = 0
-        max_retries = 5
+def combine_season(season_name, months_list, year):
+    combined = []
 
-        while retry_count < max_retries:
+    for month in months_list:
+        file_path = MONTHS_DIR / f"{year}_{month}.csv"
+        if file_path.exists():
+            combined.append(pd.read_csv(file_path))
 
-            response = requests.get(url, headers=headers)
-
-            if response.status_code == 200:
-                daily_data = response.json()
-                all_records.extend(daily_data)
-                print(f"{date_str} → {len(daily_data)} records")
-                break
-
-            elif response.status_code == 429:
-                wait_time = 2 ** retry_count
-                print(f"Rate limit hit ({date_str}). Waiting {wait_time}s...")
-                time.sleep(wait_time)
-                retry_count += 1
-
-            else:
-                print(f"Failed {date_str} → {response.status_code}")
-                break
-
-        time.sleep(0.3)
-
-    if not all_records:
-        print("No data found.")
-        return
-
-    df = pd.DataFrame(all_records)
-
-    df = df.rename(columns={
-        "comName": "commonName",
-        "sciName": "scientificName",
-        "obsDt": "observationDate",
-        "howMany": "observationCount",
-        "lat": "latitude",
-        "lng": "longitude",
-        "obsType": "observationType",
-        "protocolName": "protocolName"
-    })
-
-    output_dir = Path("months")
-    output_dir.mkdir(exist_ok=True)
-
-    output_path = output_dir / f"{month_name}_{year}.csv"
-    df.to_csv(output_path, index=False)
-
-    print(f"✓ Saved: {output_path}")
+    if combined:
+        season_df = pd.concat(combined, ignore_index=True)
+        output_file = SEASONS_DIR / f"{season_name}_{year}.csv"
+        season_df.to_csv(output_file, index=False)
+        print(f"Saved seasonal file {output_file}")
 
 
 if __name__ == "__main__":
-    today = datetime.today()
-    fetch_full_month(today.year, today.month)
+
+    lat = 19.5
+    lng = 75.3
+    radius_km = 100
+    year = 2025
+
+    for month in [1, 2, 3]:
+        fetch_month(lat, lng, radius_km, month, year)
+
+    combine_season("winter", [1, 2, 3], year)
