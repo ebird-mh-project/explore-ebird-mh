@@ -22,18 +22,16 @@ jobs:
         run: |
           pip install pandas geopandas shapely fiona pyproj
 
-      - name: Run monthly pipeline
-        run: |
-          python fetch_month_data.py
-          
       - name: Build seasonal data
         run: |
           python seasons_data.py
-
+        env:
+            EBIRD_API_KEY: ${{ secrets.EBIRD_API_KEY }}
       - name: Generate seasonal maps
         run: |
           python generate_map.py
-
+        env:
+            EBIRD_API_KEY: ${{ secrets.EBIRD_API_KEY }}
       - name: Commit results
         run: |
           git config --global user.name "github-actions"
