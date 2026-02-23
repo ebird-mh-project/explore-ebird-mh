@@ -86,7 +86,7 @@ def generate_map(time_period, mode="monthly"):
 <html>
 <head>
 <meta charset="utf-8"/>
-<title>{time_period}</title>
+<title>{{time_period}}</title>
 
 <link rel="stylesheet" href="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.css" />
 <script src="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.js"></script>
@@ -119,7 +119,7 @@ L.tileLayer(
   }}
 ).addTo(map);
 
-var gridData = {geojson_grid};
+var gridData = {{geojson_grid}};
 
 function getColor(d) {{
   return d > 500 ? '#00441b' :
@@ -144,7 +144,7 @@ function onEachGrid(feature, layer) {{
   var p = feature.properties;
 
   var content =
-    "<b>{time_period}</b><br>" +
+    "<b>{{time_period}}</b><br>" +
     "Grid ID: " + (p.grid_id || "") + "<br>" +
     "Observations: " + (p.observations || 0) + "<br><br>" +
 
@@ -160,10 +160,10 @@ L.geoJSON(gridData, {{
 }}).addTo(map);
 
 
-L.Control.geocoder({
+L.Control.geocoder({{
     defaultMarkGeocode: true
-})
-.on('markgeocode', function(e) {
+}})
+.on('markgeocode', function(e) {{
     var bbox = e.geocode.bbox;
     var poly = L.polygon([
         bbox.getSouthEast(),
@@ -172,12 +172,12 @@ L.Control.geocoder({
         bbox.getSouthWest()
     ]);
     map.fitBounds(poly.getBounds());
-})
+}})
 .addTo(map);
 
-var resetControl = L.control({position: 'topleft'});
+var resetControl = L.control({{position: 'topleft'}});
 
-resetControl.onAdd = function(map) {
+resetControl.onAdd = function(map) {{
     var div = L.DomUtil.create('div', 'leaflet-bar leaflet-control leaflet-control-custom');
     div.style.backgroundColor = 'white';
     div.style.width = '100px';
@@ -187,9 +187,9 @@ resetControl.onAdd = function(map) {
     div.style.cursor = 'pointer';
     div.innerHTML = "Reset View";
 
-    div.onclick = function(){
+    div.onclick = function(){{
         map.setView(defaultCenter, defaultZoom);
-    };
+    }};
 
     return div;
 };
