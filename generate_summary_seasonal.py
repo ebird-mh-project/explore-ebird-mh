@@ -1,5 +1,4 @@
 import pandas as pd
-import geopandas as gpd
 from pathlib import Path
 
 
@@ -8,108 +7,77 @@ def generate_seasonal_summary(season_year):
     csv_path = Path(f"new seasons/{season_year}.csv")
 
     if not csv_path.exists():
-        print(f"⚠ Seasonal CSV not found for {season_year}. Skipping.")
+        print(f"⚠ Seasonal CSV not found for {season_year}.")
         return
 
     df = pd.read_csv(csv_path)
-
-    # Standardize columns
-    df = df.rename(columns={
-        "lat": "latitude",
-        "lng": "longitude",
-        "comName": "commonName",
-        "sciName": "scientificName",
-        "obsDt": "observationDate",
-        "howMany": "observationCount",
-        "obsType": "observationType",
-        "protocolName": "protocolName"
-    })
 
     if df.empty:
         print(f"⚠ {season_year} empty.")
         return
 
-    if "longitude" not in df.columns or "latitude" not in df.columns:
-        print(f"⚠ Missing coordinates in {season_year}.")
-        return
+    total_observations = len(df)
+    species_richness = df["scientificName"].nunique()
 
-    gdf_points = gpd.GeoDataFrame(
-        df,
-        geometry=gpd.points_from_xy(df.longitude, df.latitude),
-        crs="EPSG:4326"
-    )
+    def top3(col):
+        if col not in df.columns:
+            return pd.DataFrame(columns=["Name", "Count"])
+        t = df[col].dropna().value_counts().head(3).reset_index()
+        t.columns = ["Name", "Count"]
+        return t
 
-    grid = gpd.read_file("grid.geojson").to_crs("EPSG:4326")
+    top_species = top3("commonName")
 
-    joined = gpd.sjoin(
-        gdf_points,
-        grid,
-        how="inner",
-        predicate="within"
-    )
-
-    if joined.empty:
-        print(f"⚠ No joined data for {season_year}")
-        return
-
-    summaries = []
-
-    for grid_id, group in joined.groupby("grid_id"):
-
-        def top5(col):
-            if col not in group.columns:
-                return []
-            return group[col].dropna().value_counts().head(5).index.tolist()
-
-        summaries.append({
-            "Grid ID": grid_id,
-            "Observations": len(group),
-            "Top 5 species": top5("commonName"),
-            "Top 5 protocols": top5("protocolName"),
-            "Top 5 observation types": top5("observationType")
-        })
-
-    summary_df = pd.DataFrame(summaries)
-
-    html_rows = ""
-
-    for _, row in summary_df.iterrows():
-
-        html_rows += f"""
-        <div class="grid-block">
-            <h3>Grid {row['Grid ID']}</h3>
-            <p><b>Observations:</b> {row['Observations']}</p>
-            <p><b>Top 5 species:</b><br>
-            {", ".join(row['Top 5 species'])}</p>
-            <p><b>Top 5 protocols:</b><br>
-            {", ".join(row['Top 5 protocols'])}</p>
-            <p><b>Top 5 observation types:</b><br>
-            {", ".join(row['Top 5 observation types'])}</p>
-        </div>
-        """
-
-    html_content = f"""
+    html = f"""
 <!DOCTYPE html>
 <html>
 <head>
 <meta charset="utf-8"/>
-<title>{season_year} Summary</title>
+<title>{season_year} Seasonal Summary</title>
 <style>
-body {{ font-family: Arial; padding:20px; }}
-.grid-block {{ border-bottom:1px solid #ccc; margin-bottom:15px; padding-bottom:10px; }}
+body {{font-family:Arial; padding:30px;}}
+.card {{background:#f2f2f2; padding:20px; border-radius:10px; margin-bottom:20px;}}
+img {{max-width:200px; border-radius:8px; margin-top:10px;}}
 </style>
 </head>
 <body>
-<h2>{season_year} Seasonal Summary</h2>
-{html_rows}
-</body>
-</html>
+
+<h1>{season_year} Seasonal Summary</h1>
+
+<div class="card">
+<b>Total Observations:</b> {total_observations}<br>
+<b>Species Richness:</b> {species_richness}
+</div>
+
+<div class="card"><b>Top 3 Species</b><br>
 """
 
-    output_path = Path(f"new season summary/{season_year}.html")
-    output_path.parent.mkdir(parents=True, exist_ok=True)
+    assets_path = Path("assets")
 
-    with open(output_path, "w", encoding="utf-8") as f:
-        f.write(html_content)
+    for _, row in top_species.iterrows():
+        species = row["Name"]
+        count = row["Count"]
+        img_tag = ""
+
+        found = False
+        for ext in ["jpg", "png", "jpeg"]:
+            if (assets_path / f"{species}.{ext}").exists():
+                img_tag = f'<img src="../assets/{species}.{ext}">'
+                found = True
+                break
+
+        if not found:
+            img_tag = f"<p><i>img not found: {species}</i></p>"
+
+        html += f"<b>{species}</b> ({count})<br>{img_tag}<br><br>"
+
+    html += "</div>"
+    html += "</body></html>"
+
+    output_path = Path("new season summary")
+    output_path.mkdir(exist_ok=True)
+
+    with open(output_path / f"{season_year}.html", "w", encoding="utf-8") as f:
+        f.write(html)
 
     print(f"✓ Seasonal summary generated: {season_year}")
