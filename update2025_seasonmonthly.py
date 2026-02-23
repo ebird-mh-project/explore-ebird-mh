@@ -29,12 +29,12 @@ from generate_summary import generate_summary
 from generate_summary_seasonal import generate_seasonal_summary
 
 
-#MONTHS_2025 = list(range(1, 13))
-MONTHS_2026 = [1]
+MONTHS_2025 = list(range(1, 13))
+#MONTHS_2026 = [1]
 
 YEAR_MONTHS = {
-    #2025: MONTHS_2025,
-    2026: MONTHS_2026
+    2025: MONTHS_2025,
+    #2026: MONTHS_2026
 }
 
 
