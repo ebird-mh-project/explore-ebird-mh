@@ -20,15 +20,17 @@ def generate_seasonal_summary(season_year):
         "comName": "commonName",
         "sciName": "scientificName",
         "obsDt": "observationDate",
-        "howMany": "observationCount"
+        "howMany": "observationCount",
+        "obsType": "observationType",
+        "protocolName": "protocolName"
     })
 
     if df.empty:
-        print(f"⚠ {season_year} empty. Skipping summary.")
+        print(f"⚠ {season_year} empty.")
         return
 
     if "longitude" not in df.columns or "latitude" not in df.columns:
-        print(f"⚠ Missing coordinates in {season_year}. Skipping.")
+        print(f"⚠ Missing coordinates in {season_year}.")
         return
 
     gdf_points = gpd.GeoDataFrame(
@@ -38,13 +40,6 @@ def generate_seasonal_summary(season_year):
     )
 
     grid = gpd.read_file("grid.geojson").to_crs("EPSG:4326")
-
-    # Remove leftover join columns
-    for col in ["index_left", "index_right"]:
-        if col in gdf_points.columns:
-            gdf_points = gdf_points.drop(columns=[col])
-        if col in grid.columns:
-            grid = grid.drop(columns=[col])
 
     joined = gpd.sjoin(
         gdf_points,
@@ -61,10 +56,17 @@ def generate_seasonal_summary(season_year):
 
     for grid_id, group in joined.groupby("grid_id"):
 
+        def top5(col):
+            if col not in group.columns:
+                return []
+            return group[col].dropna().value_counts().head(5).index.tolist()
+
         summaries.append({
             "Grid ID": grid_id,
             "Observations": len(group),
-            "Top 5 species": group["commonName"].value_counts().head(5).index.tolist()
+            "Top 5 species": top5("commonName"),
+            "Top 5 protocols": top5("protocolName"),
+            "Top 5 observation types": top5("observationType")
         })
 
     summary_df = pd.DataFrame(summaries)
@@ -72,12 +74,17 @@ def generate_seasonal_summary(season_year):
     html_rows = ""
 
     for _, row in summary_df.iterrows():
+
         html_rows += f"""
         <div class="grid-block">
             <h3>Grid {row['Grid ID']}</h3>
             <p><b>Observations:</b> {row['Observations']}</p>
             <p><b>Top 5 species:</b><br>
             {", ".join(row['Top 5 species'])}</p>
+            <p><b>Top 5 protocols:</b><br>
+            {", ".join(row['Top 5 protocols'])}</p>
+            <p><b>Top 5 observation types:</b><br>
+            {", ".join(row['Top 5 observation types'])}</p>
         </div>
         """
 
@@ -89,7 +96,7 @@ def generate_seasonal_summary(season_year):
 <title>{season_year} Summary</title>
 <style>
 body {{ font-family: Arial; padding:20px; }}
-.grid-block {{ border-bottom:1px solid #ccc; margin-bottom:15px; }}
+.grid-block {{ border-bottom:1px solid #ccc; margin-bottom:15px; padding-bottom:10px; }}
 </style>
 </head>
 <body>
