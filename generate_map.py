@@ -88,6 +88,8 @@ def generate_map(time_period, mode="monthly"):
 <meta charset="utf-8"/>
 <title>{time_period}</title>
 
+<link rel="stylesheet" href="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.css" />
+<script src="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.js"></script>
 <link rel="stylesheet"
  href="https://unpkg.com/leaflet/dist/leaflet.css"/>
 <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
@@ -106,7 +108,9 @@ html, body {{ margin:0; height:100%; }}
 
 <script>
 
-var map = L.map('map').setView([19.5, 75.3], 6);
+var defaultCenter = [19.5, 75.3];
+var defaultZoom = 6;
+var map = L.map('map').setView(defaultCenter, defaultZoom);
 
 L.tileLayer(
   'https://{{s}}.tile.openstreetmap.org/{{z}}/{{x}}/{{y}}.png',
@@ -154,6 +158,43 @@ L.geoJSON(gridData, {{
   style: style,
   onEachFeature: onEachGrid
 }}).addTo(map);
+
+
+L.Control.geocoder({
+    defaultMarkGeocode: true
+})
+.on('markgeocode', function(e) {
+    var bbox = e.geocode.bbox;
+    var poly = L.polygon([
+        bbox.getSouthEast(),
+        bbox.getNorthEast(),
+        bbox.getNorthWest(),
+        bbox.getSouthWest()
+    ]);
+    map.fitBounds(poly.getBounds());
+})
+.addTo(map);
+
+var resetControl = L.control({position: 'topleft'});
+
+resetControl.onAdd = function(map) {
+    var div = L.DomUtil.create('div', 'leaflet-bar leaflet-control leaflet-control-custom');
+    div.style.backgroundColor = 'white';
+    div.style.width = '100px';
+    div.style.height = '30px';
+    div.style.lineHeight = '30px';
+    div.style.textAlign = 'center';
+    div.style.cursor = 'pointer';
+    div.innerHTML = "Reset View";
+
+    div.onclick = function(){
+        map.setView(defaultCenter, defaultZoom);
+    };
+
+    return div;
+};
+
+resetControl.addTo(map);
 
 </script>
 </body>
