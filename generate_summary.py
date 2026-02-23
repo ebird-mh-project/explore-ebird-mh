@@ -23,8 +23,6 @@ def generate_summary(month_year):
         return t
 
     top_species = top3("commonName")
-    top_protocols = top3("protocolName")
-    top_obs_types = top3("observationType")
 
     html = f"""
 <!DOCTYPE html>
@@ -70,21 +68,11 @@ img {{max-width:200px; border-radius:8px; margin-top:10px;}}
         html += f"<b>{species}</b> ({count})<br>{img_tag}<br><br>"
 
     html += "</div>"
-
-    def add_section(title, df_section):
-        section = f'<div class="card"><b>{title}</b><br>'
-        for _, row in df_section.iterrows():
-            section += f"{row['Name']} ({row['Count']})<br>"
-        section += "</div>"
-        return section
-
-    html += add_section("Top 3 Protocol Types", top_protocols)
-    html += add_section("Top 3 Observation Types", top_obs_types)
-
     html += "</body></html>"
 
     out = Path("month summary")
     out.mkdir(exist_ok=True)
+
     with open(out / f"{month_year}.html", "w", encoding="utf-8") as f:
         f.write(html)
 
