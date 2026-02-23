@@ -30,9 +30,9 @@ jobs:
           python seasons_data.py
         env:
             EBIRD_API_KEY: ${{ secrets.EBIRD_API_KEY }}
-      - name: Generate seasonal maps
+      - name: Generate seasonal maps & summaries
         run: |
-          python generate_map.py
+          python generate_summary_seasonal.py
         env:
             EBIRD_API_KEY: ${{ secrets.EBIRD_API_KEY }}
       - name: Commit results
