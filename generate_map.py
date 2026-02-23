@@ -86,7 +86,7 @@ def generate_map(time_period, mode="monthly"):
 <html>
 <head>
 <meta charset="utf-8"/>
-<title>{{time_period}}</title>
+<title>{time_period}</title>
 
 <link rel="stylesheet" href="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.css" />
 <script src="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.js"></script>
@@ -113,13 +113,13 @@ var defaultZoom = 6;
 var map = L.map('map').setView(defaultCenter, defaultZoom);
 
 L.tileLayer(
-  'https://{{s}}.tile.openstreetmap.org/{{z}}/{{x}}/{{y}}.png',
-  {{
+  'https://{{{{s}}}}.tile.openstreetmap.org/{{{{z}}}}/{{{{x}}}}/{{{{y}}}}.png',
+  {{{{
     attribution: '© OpenStreetMap contributors'
-  }}
+  }}}}
 ).addTo(map);
 
-var gridData = {{geojson_grid}};
+var gridData = {geojson_grid};
 
 function getColor(d) {{
   return d > 500 ? '#00441b' :
@@ -132,19 +132,19 @@ function getColor(d) {{
 }}
 
 function style(feature) {{
-  return {{
+  return {{{{
     fillColor: getColor(feature.properties.observations || 0),
     weight: 1,
     color: '#555',
     fillOpacity: 0.7
-  }};
+  }}}};
 }}
 
 function onEachGrid(feature, layer) {{
   var p = feature.properties;
 
   var content =
-    "<b>{{time_period}}</b><br>" +
+    "<b>{time_period}</b><br>" +
     "Grid ID: " + (p.grid_id || "") + "<br>" +
     "Observations: " + (p.observations || 0) + "<br><br>" +
 
@@ -154,15 +154,15 @@ function onEachGrid(feature, layer) {{
   layer.bindPopup(content);
 }}
 
-L.geoJSON(gridData, {{
+L.geoJSON(gridData, {{{{
   style: style,
   onEachFeature: onEachGrid
-}}).addTo(map);
+}}}}).addTo(map);
 
 
-L.Control.geocoder({{
+L.Control.geocoder({{{{
     defaultMarkGeocode: true
-}})
+}}}})
 .on('markgeocode', function(e) {{
     var bbox = e.geocode.bbox;
     var poly = L.polygon([
@@ -175,7 +175,7 @@ L.Control.geocoder({{
 }})
 .addTo(map);
 
-var resetControl = L.control({{position: 'topleft'}});
+var resetControl = L.control({{{{position: 'topleft'}}}});
 
 resetControl.onAdd = function(map) {{
     var div = L.DomUtil.create('div', 'leaflet-bar leaflet-control leaflet-control-custom');
@@ -187,12 +187,12 @@ resetControl.onAdd = function(map) {{
     div.style.cursor = 'pointer';
     div.innerHTML = "Reset View";
 
-    div.onclick = function(){{
+    div.onclick = function() {{
         map.setView(defaultCenter, defaultZoom);
     }};
 
     return div;
-};
+}};
 
 resetControl.addTo(map);
 
