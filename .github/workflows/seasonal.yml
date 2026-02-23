@@ -33,7 +33,7 @@ jobs:
 
       - name: Run seasonal pipeline
         run: |
-          python seasonal_pipeline.py
+          python produce_seasons.py
 
       - name: Commit results
         run: |
