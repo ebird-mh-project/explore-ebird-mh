@@ -113,10 +113,10 @@ var defaultZoom = 6;
 var map = L.map('map').setView(defaultCenter, defaultZoom);
 
 L.tileLayer(
-  'https://{{{{s}}}}.tile.openstreetmap.org/{{{{z}}}}/{{{{x}}}}/{{{{y}}}}.png',
-  {{{{
+  'https://{{s}}.tile.openstreetmap.org/{{z}}/{{x}}/{{y}}.png',
+  {{
     attribution: '© OpenStreetMap contributors'
-  }}}}
+  }}
 ).addTo(map);
 
 var gridData = {geojson_grid};
@@ -132,12 +132,12 @@ function getColor(d) {{
 }}
 
 function style(feature) {{
-  return {{{{
+  return {{
     fillColor: getColor(feature.properties.observations || 0),
     weight: 1,
     color: '#555',
     fillOpacity: 0.7
-  }}}};
+  }};
 }}
 
 function onEachGrid(feature, layer) {{
@@ -154,15 +154,14 @@ function onEachGrid(feature, layer) {{
   layer.bindPopup(content);
 }}
 
-L.geoJSON(gridData, {{{{
+L.geoJSON(gridData, {{
   style: style,
   onEachFeature: onEachGrid
-}}}}).addTo(map);
+}}).addTo(map);
 
-
-L.Control.geocoder({{{{
+L.Control.geocoder({{
     defaultMarkGeocode: true
-}}}})
+}})
 .on('markgeocode', function(e) {{
     var bbox = e.geocode.bbox;
     var poly = L.polygon([
@@ -175,7 +174,7 @@ L.Control.geocoder({{{{
 }})
 .addTo(map);
 
-var resetControl = L.control({{{{position: 'topleft'}}}});
+var resetControl = L.control({{position: 'topleft'}});
 
 resetControl.onAdd = function(map) {{
     var div = L.DomUtil.create('div', 'leaflet-bar leaflet-control leaflet-control-custom');
@@ -200,7 +199,6 @@ resetControl.addTo(map);
 </body>
 </html>
 """
-
     output_path.parent.mkdir(exist_ok=True)
 
     with open(output_path, "w", encoding="utf-8") as f:
