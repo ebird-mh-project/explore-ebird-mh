@@ -73,7 +73,7 @@ html, body {
   bottom: 0;
   opacity: 0;
   visibility: hidden;
-  transition: opacity 0.4s ease;
+  transition: opacity 0.9s ease;
 }
 
 .view.active {
@@ -110,6 +110,12 @@ html, body {
   padding: 40px;
   overflow-y: auto;
 }
+
+#sum2025 {
+  padding: 40px;
+  overflow-y: auto;
+}
+
 
 a {
   color: darkgreen;
@@ -163,6 +169,8 @@ a {
     <option>2026</option>
   </select>
 
+  <button onclick="showView('sum2025')">2025 SUMMARY</button>
+
   <div id="modeIndicator">ORIGINAL (SEASONAL)</div>
 
 </div>
@@ -183,6 +191,9 @@ a {
     (divided into seasons) was analysed first. Then the automated (monthly & seasonal)
     workflow was devised based on that. Data for all of 2025 & January 2026 were generated 
     initially, and after this, the dashboard will be updated every month. 
+  </p>
+  <p>
+    <b>ABOUT eBird DATA:</b>
   </p>
   <p>
     I will be using the knowledge gained through this project to create a
@@ -236,6 +247,15 @@ a {
   </p>
 
 </div>
+<div id="sum2025" class="view">
+  <h2>What the 2025 data tells us about observation logged in on eBird</h2>
+  <p>MORE DATA! Let's take a look at the data for 2025. We'll be looking a little bit at data
+    from previous years too, but please note that the data used for the 'original' maps is different from 
+    the data obtained in the automated process (API calls result in a need to be mindful of rate-limiting,
+    didn't include 'protocol type' & 'observation type' as a result, refer to the About section).
+  </p>
+</div>
+
 
 <script>
 
@@ -296,6 +316,7 @@ function setMode(newMode) {
 function showView(view) {
   mapView.classList.toggle("active", view === "map");
   aboutView.classList.toggle("active", view === "about");
+  sum2025.classList.toggle("active", view === "sum2025");
 }
 
 /* ---------- Initialize ---------- */
@@ -314,6 +335,3 @@ SeasonYearSelection.addEventListener("change", updateFrames);
 </script>
 </body>
 </html>
-
-
-
