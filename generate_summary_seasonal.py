@@ -69,7 +69,7 @@ img {{max-width:200px; border-radius:8px; margin-top:10px;}}
         if not found:
             img_tag = f"<p><i>img not found: {species}</i></p>"
 
-        html += f"<b>{species}</b> ({count})<br>{img_tag}<br><br>"
+        html += f"<b>{species}</b><br>{img_tag}<br><br>"
 
     html += "</div>"
     html += "</body></html>"
