@@ -28,7 +28,7 @@ jobs:
         run: |
           python fetch_data.py
           
-          MONTH_YEAR=$(date +"%B_%Y")
+          MONTH_YEAR=$(date -d "last month" +"%B_%Y")
           
           python -c "from generate_map import generate_map; generate_map('$MONTH_YEAR')"
           python -c "from generate_summary import generate_summary; generate_summary('$MONTH_YEAR')"
